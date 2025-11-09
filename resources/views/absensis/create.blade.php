@@ -235,7 +235,7 @@
                                                       'text-red-600': employeeStatus[employee.id] === 'off',
                                                       'text-gray-400': !employeeStatus[employee.id]
                                                   }"
-                                                  x-text="formatRupiah(employeeGaji[employee.id] || 0)">
+                                                  x-text="formatRupiah(getGajiHariIni(employee.id, employee.gaji_pokok))">
                                             </span>
                                         </td>
                                     </tr>
@@ -350,6 +350,17 @@
             init() {
                 this.filteredEmployees = this.employees;
                 console.log('✅ Form Tailwind Loaded -', this.employees.length, 'employees');
+
+                // Debug: Check if employees have gaji_pokok
+                if (this.employees.length > 0) {
+                    const sample = this.employees[0];
+                    console.log('📊 Sample employee:', {
+                        id: sample.id,
+                        nama: sample.nama,
+                        jabatan: sample.jabatan,
+                        gaji_pokok: sample.gaji_pokok
+                    });
+                }
             },
 
             // Filter employees
@@ -392,54 +403,112 @@
                     if (!this.selectedEmployees.includes(id)) {
                         this.selectedEmployees.push(id);
                     }
-                    // Set default status to full
-                    if (!this.employeeStatus[id]) {
-                        this.employeeStatus[id] = 'full';
-                        this.calculateGaji(id);
-                    }
+                    // Set default status to full and calculate immediately
+                    this.employeeStatus = {
+                        ...this.employeeStatus,
+                        [id]: 'full'
+                    };
+                    this.calculateGaji(id);
+                    console.log('✅ Employee selected:', id);
                 } else {
                     this.selectedEmployees = this.selectedEmployees.filter(empId => empId !== id);
-                    delete this.employeeStatus[id];
-                    delete this.employeeGaji[id];
+                    // Remove from status and gaji (force reactivity)
+                    const newStatus = { ...this.employeeStatus };
+                    const newGaji = { ...this.employeeGaji };
+                    delete newStatus[id];
+                    delete newGaji[id];
+                    this.employeeStatus = newStatus;
+                    this.employeeGaji = newGaji;
+                    console.log('❌ Employee deselected:', id);
                 }
             },
 
             // Toggle all employees
             toggleAll(checked) {
                 if (checked) {
+                    const newStatus = { ...this.employeeStatus };
+                    const newGaji = { ...this.employeeGaji };
+
                     this.filteredEmployees.forEach(emp => {
                         if (!this.selectedEmployees.includes(emp.id)) {
                             this.selectedEmployees.push(emp.id);
-                            this.employeeStatus[emp.id] = 'full';
-                            this.calculateGaji(emp.id);
                         }
+                        newStatus[emp.id] = 'full';
+
+                        // Calculate gaji manually here
+                        const gajiPokok = emp.gaji_pokok || 0;
+                        newGaji[emp.id] = gajiPokok / 30;
                     });
+
+                    this.employeeStatus = newStatus;
+                    this.employeeGaji = newGaji;
+                    console.log('✅ All employees selected:', this.filteredEmployees.length);
                 } else {
+                    const newStatus = { ...this.employeeStatus };
+                    const newGaji = { ...this.employeeGaji };
+
                     this.filteredEmployees.forEach(emp => {
                         this.selectedEmployees = this.selectedEmployees.filter(id => id !== emp.id);
-                        delete this.employeeStatus[emp.id];
-                        delete this.employeeGaji[emp.id];
+                        delete newStatus[emp.id];
+                        delete newGaji[emp.id];
                     });
+
+                    this.employeeStatus = newStatus;
+                    this.employeeGaji = newGaji;
+                    console.log('❌ All employees deselected');
                 }
             },
 
             // Calculate gaji
             calculateGaji(employeeId) {
                 const employee = this.employees.find(e => e.id === employeeId);
-                if (!employee) return;
+                if (!employee) {
+                    console.error('❌ Employee not found:', employeeId);
+                    return;
+                }
 
                 const status = this.employeeStatus[employeeId];
                 const gajiPokok = employee.gaji_pokok || 0;
 
+                let calculatedGaji = 0;
                 if (status === 'full') {
-                    this.employeeGaji[employeeId] = gajiPokok / 30;
+                    calculatedGaji = gajiPokok / 30;
                 } else if (status === 'setengah_hari') {
-                    this.employeeGaji[employeeId] = gajiPokok / 60;
+                    calculatedGaji = gajiPokok / 60;
                 } else if (status === 'off') {
-                    this.employeeGaji[employeeId] = 0;
-                } else {
-                    this.employeeGaji[employeeId] = 0;
+                    calculatedGaji = 0;
                 }
+
+                // Force reactivity by creating new object reference
+                this.employeeGaji = {
+                    ...this.employeeGaji,
+                    [employeeId]: calculatedGaji
+                };
+
+                console.log('💰 Gaji calculated:', {
+                    employeeId,
+                    nama: employee.nama,
+                    status,
+                    gajiPokok,
+                    gajiHariIni: calculatedGaji
+                });
+            },
+
+            // Get gaji hari ini (computed on-the-fly for better reactivity)
+            getGajiHariIni(employeeId, gajiPokok) {
+                const status = this.employeeStatus[employeeId];
+                if (!status) return 0;
+
+                gajiPokok = gajiPokok || 0;
+
+                if (status === 'full') {
+                    return gajiPokok / 30;
+                } else if (status === 'setengah_hari') {
+                    return gajiPokok / 60;
+                } else if (status === 'off') {
+                    return 0;
+                }
+                return 0;
             },
 
             // Format rupiah
@@ -472,7 +541,9 @@
 
             totalGajiHariIni() {
                 return this.selectedEmployees.reduce((total, id) => {
-                    return total + (this.employeeGaji[id] || 0);
+                    const emp = this.employees.find(e => e.id === id);
+                    if (!emp) return total;
+                    return total + this.getGajiHariIni(id, emp.gaji_pokok);
                 }, 0);
             },
 
