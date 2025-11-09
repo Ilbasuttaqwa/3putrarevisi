@@ -1046,53 +1046,89 @@ class AbsensiController extends Controller
         // Clear cache untuk memastikan data fresh
         Cache::forget('employees_data');
         Cache::forget('gudangs_data');
-        
-        // Always return all employees regardless of pembibitan
-        $query = Employee::select('id', 'nama', 'jabatan', 'gaji_pokok');
-        
+
+        $search = $request->get('search', '');
+        $roleFilter = $request->get('role', 'all');
+
+        // Get employees with lokasi relation
+        $query = Employee::with('lokasi')->select('id', 'nama', 'jabatan', 'gaji_pokok', 'lokasi_id');
+
         // Admin can only see karyawan (not mandor)
         if ($this->getCurrentUser()?->isAdmin()) {
             $query->where('jabatan', 'karyawan');
         }
-        
-        $employees = $query->get();
-        
-        // Get fresh gudang data for manager
+
+        // Apply search filter
+        if ($search) {
+            $query->where('nama', 'LIKE', '%' . $search . '%');
+        }
+
+        // Apply role filter
+        if ($roleFilter && $roleFilter !== 'all') {
+            $query->where('jabatan', $roleFilter);
+        }
+
+        $employees = $query->orderBy('nama')->get()->map(function($emp) {
+            return [
+                'id' => 'employee_' . $emp->id,
+                'nama' => $emp->nama,
+                'jabatan' => $emp->jabatan,
+                'gaji_pokok' => $emp->gaji_pokok,
+                'lokasi' => $emp->lokasi,
+                'source' => 'employee'
+            ];
+        });
+
+        // Get gudang employees for manager
         $gudangEmployees = collect();
-        if ($this->getCurrentUser()?->isManager()) {
-            $gudangs = \App\Models\Gudang::select('id', 'nama', 'gaji')->orderBy('nama')->get();
+        if ($this->getCurrentUser()?->isManager() && ($roleFilter === 'all' || $roleFilter === 'karyawan_gudang')) {
+            $gudangQuery = \App\Models\Gudang::select('id', 'nama', 'gaji');
+
+            if ($search) {
+                $gudangQuery->where('nama', 'LIKE', '%' . $search . '%');
+            }
+
+            $gudangs = $gudangQuery->orderBy('nama')->get();
             $gudangEmployees = $gudangs->map(function($gudang) {
-                return (object) [
+                return [
                     'id' => 'gudang_' . $gudang->id,
                     'nama' => $gudang->nama,
                     'jabatan' => 'karyawan_gudang',
                     'gaji_pokok' => $gudang->gaji,
+                    'lokasi' => null,
                     'source' => 'gudang'
                 ];
             });
         }
-        
-        // Get mandor data for manager
+
+        // Get mandor employees for manager
         $mandorEmployees = collect();
-        if ($this->getCurrentUser()?->isManager()) {
-            $mandors = \App\Models\Mandor::select('id', 'nama', 'gaji')->orderBy('nama')->get();
+        if ($this->getCurrentUser()?->isManager() && ($roleFilter === 'all' || $roleFilter === 'mandor')) {
+            $mandorQuery = \App\Models\Mandor::select('id', 'nama', 'gaji');
+
+            if ($search) {
+                $mandorQuery->where('nama', 'LIKE', '%' . $search . '%');
+            }
+
+            $mandors = $mandorQuery->orderBy('nama')->get();
             $mandorEmployees = $mandors->map(function($mandor) {
-                return (object) [
+                return [
                     'id' => 'mandor_' . $mandor->id,
                     'nama' => $mandor->nama,
                     'jabatan' => 'mandor',
                     'gaji_pokok' => $mandor->gaji,
+                    'lokasi' => null,
                     'source' => 'mandor'
                 ];
             });
         }
-        
+
         // Combine all employees
         $allEmployees = $employees->concat($gudangEmployees)->concat($mandorEmployees);
-        
+
         return response()->json([
             'success' => true,
-            'employees' => $allEmployees
+            'employees' => $allEmployees->values()->all()
         ]);
     }
 
