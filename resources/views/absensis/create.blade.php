@@ -3,13 +3,46 @@
 @section('title', 'Tambah Absensi')
 
 @push('styles')
-<!-- Force reload CSS -->
+<!-- Force reload CSS - CACHE DISABLED -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 <link rel="stylesheet" href="https://cdn.tailwindcss.com?v={{ time() }}">
 <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js?v={{ time() }}" defer></script>
+<style>
+    /* 🚨 VERSI BARU INDICATOR - JIKA ANDA LIHAT INI = UPDATE BERHASIL */
+    .version-indicator {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        text-align: center;
+        padding: 12px;
+        font-weight: bold;
+        font-size: 16px;
+        z-index: 99999;
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+        animation: slideDown 0.5s ease-out;
+    }
+    @keyframes slideDown {
+        from { transform: translateY(-100%); }
+        to { transform: translateY(0); }
+    }
+    .main-content {
+        margin-top: 50px !important;
+    }
+</style>
 @endpush
 
 @section('content')
-<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
+<!-- 🟢 VERSION INDICATOR - DO NOT REMOVE -->
+<div class="version-indicator">
+    🎉 FORM BARU BERHASIL DIMUAT! Versi: {{ date('Y-m-d H:i:s') }} - Powered by Tailwind CSS + Alpine.js
+</div>
+
+<div class="main-content min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
         <div class="mb-8">
