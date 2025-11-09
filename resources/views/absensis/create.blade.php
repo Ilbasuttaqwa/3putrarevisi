@@ -2,11 +2,6 @@
 
 @section('title', 'Tambah Absensi')
 
-<!-- Force browser cache clear -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h3 mb-0 text-gray-800"><i class="bi bi-plus-circle"></i> Tambah Absensi</h1>
@@ -30,8 +25,8 @@
                 </ul>
             </div>
         @endif
-        
-        <form method="POST" action="{{ route(auth()->user()->isManager() ? 'manager.absensis.store' : 'admin.absensis.store') }}">
+
+        <form method="POST" action="{{ route(auth()->user()->isManager() ? 'manager.absensis.store' : 'admin.absensis.store') }}" id="absensiForm">
             @csrf
 
             <div class="row">
@@ -41,25 +36,60 @@
                             id="employee_id" name="employee_id" required>
                         <option value="">Pilih Karyawan</option>
                         @if(isset($allEmployees) && $allEmployees->count() > 0)
-                            @foreach($allEmployees as $employee)
-                                <option value="{{ $employee->id }}" 
-                                        data-jabatan="{{ $employee->jabatan }}"
-                                        data-gaji="{{ $employee->gaji_pokok }}"
-                                        data-source="{{ $employee->source ?? 'unknown' }}"
-                                        {{ old('employee_id') == $employee->id ? 'selected' : '' }}>
-                                    {{ $employee->nama }} ({{ $employee->jabatan === 'karyawan' ? 'karyawan kandang' : $employee->jabatan }})
-                                </option>
-                            @endforeach
+                            @php
+                                $groupedEmployees = $allEmployees->groupBy('jabatan');
+                            @endphp
+
+                            @if(isset($groupedEmployees['karyawan_gudang']))
+                                <optgroup label="Karyawan Gudang">
+                                    @foreach($groupedEmployees['karyawan_gudang'] as $employee)
+                                        <option value="{{ $employee->id }}"
+                                                data-jabatan="{{ $employee->jabatan }}"
+                                                data-gaji="{{ $employee->gaji_pokok }}"
+                                                data-source="{{ $employee->source ?? 'unknown' }}"
+                                                {{ old('employee_id') == $employee->id ? 'selected' : '' }}>
+                                            {{ $employee->nama }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                            @endif
+
+                            @if(isset($groupedEmployees['karyawan']))
+                                <optgroup label="Karyawan Kandang">
+                                    @foreach($groupedEmployees['karyawan'] as $employee)
+                                        <option value="{{ $employee->id }}"
+                                                data-jabatan="{{ $employee->jabatan }}"
+                                                data-gaji="{{ $employee->gaji_pokok }}"
+                                                data-source="{{ $employee->source ?? 'unknown' }}"
+                                                {{ old('employee_id') == $employee->id ? 'selected' : '' }}>
+                                            {{ $employee->nama }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                            @endif
+
+                            @if(isset($groupedEmployees['mandor']))
+                                <optgroup label="Mandor">
+                                    @foreach($groupedEmployees['mandor'] as $employee)
+                                        <option value="{{ $employee->id }}"
+                                                data-jabatan="{{ $employee->jabatan }}"
+                                                data-gaji="{{ $employee->gaji_pokok }}"
+                                                data-source="{{ $employee->source ?? 'unknown' }}"
+                                                {{ old('employee_id') == $employee->id ? 'selected' : '' }}>
+                                            {{ $employee->nama }}
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                            @endif
                         @else
                             <option value="" disabled>Tidak ada data karyawan</option>
                         @endif
                     </select>
-                    
-                    <!-- Debug Info -->
+
                     @error('employee_id')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                    
+
                     @if(config('app.debug'))
                         <small class="text-muted">
                             Debug: Total karyawan: {{ isset($allEmployees) ? $allEmployees->count() : 0 }}
@@ -142,10 +172,42 @@
 
 @push('scripts')
 <script>
-// Ensure jQuery is available
 $(document).ready(function() {
-    console.log('Absensi form script loaded');
-    
+    console.log('Absensi form script loaded with Select2');
+
+    // Initialize Select2 with search functionality
+    $('#employee_id').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Cari karyawan...',
+        allowClear: true,
+        width: '100%',
+        language: {
+            noResults: function() {
+                return "Tidak ada karyawan yang ditemukan";
+            },
+            searching: function() {
+                return "Mencari...";
+            }
+        }
+    });
+
+    // Initialize Flatpickr for date input
+    flatpickr("#tanggal", {
+        dateFormat: "Y-m-d",
+        defaultDate: new Date(),
+        locale: {
+            firstDayOfWeek: 1,
+            weekdays: {
+                shorthand: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'],
+                longhand: ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+            },
+            months: {
+                shorthand: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+                longhand: ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+            }
+        }
+    });
+
     const employeeSelect = document.getElementById('employee_id');
     const gajiPokokDisplay = document.getElementById('gaji_pokok_saat_itu_display');
     const gajiPokokInput = document.getElementById('gaji_pokok_saat_itu');
@@ -153,96 +215,69 @@ $(document).ready(function() {
     const gajiHariItuInput = document.getElementById('gaji_hari_itu');
     const statusRadios = document.querySelectorAll('input[name="status"]');
 
-    console.log('Elements found:', {
-        employeeSelect: !!employeeSelect,
-        gajiPokokDisplay: !!gajiPokokDisplay,
-        gajiPokokInput: !!gajiPokokInput,
-        gajiHariItuDisplay: !!gajiHariItuDisplay,
-        gajiHariItuInput: !!gajiHariItuInput
-    });
-
     // Trigger auto-fill on page load if employee is already selected
     if (employeeSelect && employeeSelect.value) {
-        console.log('Employee already selected:', employeeSelect.value);
         const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
         if (selectedOption.value) {
             const gaji = parseFloat(selectedOption.getAttribute('data-gaji')) || 0;
-            console.log('Gaji from data attribute:', gaji);
-            
+
             if (gajiPokokDisplay && gajiPokokInput) {
                 gajiPokokDisplay.value = formatCurrency(gaji);
                 gajiPokokInput.value = gaji;
-                console.log('Gaji pokok filled:', gajiPokokInput.value);
             }
-            
-            // Calculate gaji hari itu if status is selected
+
             calculateGajiHariItu();
         }
     }
 
-    // Auto-fill gaji pokok saat pilih karyawan
-    if (employeeSelect) {
-        employeeSelect.addEventListener('change', function() {
-            console.log('Employee changed to:', this.value);
-            const selectedOption = this.options[this.selectedIndex];
-            if (selectedOption.value) {
-                // Ambil gaji dari data attribute (lebih cepat dan reliable)
-                const gaji = parseFloat(selectedOption.getAttribute('data-gaji')) || 0;
-                console.log('Gaji from data attribute:', gaji);
-                
-                if (gajiPokokDisplay && gajiPokokInput) {
-                    gajiPokokDisplay.value = formatCurrency(gaji);
-                    gajiPokokInput.value = gaji;
-                    console.log('Gaji pokok filled:', gaji);
-                }
-                
-                // Hitung gaji hari itu
-                calculateGajiHariItu();
-            } else {
-                if (gajiPokokDisplay && gajiPokokInput) {
-                    gajiPokokDisplay.value = '';
-                    gajiPokokInput.value = '';
-                }
-                if (gajiHariItuDisplay && gajiHariItuInput) {
-                    gajiHariItuDisplay.value = '';
-                    gajiHariItuInput.value = '';
-                }
+    // Auto-fill gaji pokok when employee is selected
+    $('#employee_id').on('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.value) {
+            const gaji = parseFloat(selectedOption.getAttribute('data-gaji')) || 0;
+
+            if (gajiPokokDisplay && gajiPokokInput) {
+                gajiPokokDisplay.value = formatCurrency(gaji);
+                gajiPokokInput.value = gaji;
             }
-        });
-    }
 
+            calculateGajiHariItu();
+        } else {
+            if (gajiPokokDisplay && gajiPokokInput) {
+                gajiPokokDisplay.value = '';
+                gajiPokokInput.value = '';
+            }
+            if (gajiHariItuDisplay && gajiHariItuInput) {
+                gajiHariItuDisplay.value = '';
+                gajiHariItuInput.value = '';
+            }
+        }
+    });
 
-    // Hitung gaji hari itu saat status berubah
+    // Calculate gaji hari when status changes
     statusRadios.forEach(radio => {
         radio.addEventListener('change', calculateGajiHariItu);
     });
 
     function calculateGajiHariItu() {
-        console.log('Calculating gaji hari itu...');
         const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
         if (!selectedOption.value) {
-            console.log('No employee selected');
             return;
         }
 
         const gajiPokok = parseFloat(selectedOption.getAttribute('data-gaji')) || 0;
         const selectedStatus = document.querySelector('input[name="status"]:checked');
-        
-        console.log('Gaji pokok:', gajiPokok);
-        console.log('Selected status:', selectedStatus ? selectedStatus.value : 'none');
-        
+
         if (selectedStatus && gajiHariItuDisplay && gajiHariItuInput) {
             let gajiHariItu = 0;
             if (selectedStatus.value === 'full') {
-                gajiHariItu = gajiPokok / 30; // Gaji per hari
+                gajiHariItu = gajiPokok / 30;
             } else if (selectedStatus.value === 'setengah_hari') {
-                gajiHariItu = (gajiPokok / 30) / 2; // Setengah hari
+                gajiHariItu = (gajiPokok / 30) / 2;
             }
-            
-            console.log('Calculated gaji hari itu:', gajiHariItu);
+
             gajiHariItuDisplay.value = formatCurrency(gajiHariItu);
-            gajiHariItuInput.value = gajiHariItu.toFixed(2); // Simpan nilai numerik dengan 2 desimal
-            console.log('Gaji hari itu input filled:', gajiHariItuInput.value);
+            gajiHariItuInput.value = gajiHariItu.toFixed(2);
         }
     }
 
@@ -254,45 +289,31 @@ $(document).ready(function() {
         }).format(amount);
     }
 
-    // Simple form submission with validation
-    const form = document.querySelector('form[action*="absensis"]');
+    // Form submission with AJAX
+    const form = document.getElementById('absensiForm');
     if (form) {
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
-            console.log('🚀 Form submit triggered');
-            
-            // Check if required fields are filled
+
             const employeeId = document.getElementById('employee_id').value;
             const tanggal = document.getElementById('tanggal').value;
             const status = document.querySelector('input[name="status"]:checked');
             const gajiPokok = document.getElementById('gaji_pokok_saat_itu').value;
             const gajiHariItu = document.getElementById('gaji_hari_itu').value;
-            
-            console.log('📊 Form Data:', {
-                employeeId,
-                tanggal,
-                status: status ? status.value : 'none',
-                gajiPokok,
-                gajiHariItu
-            });
-            
+
             if (!employeeId || !tanggal || !status || !gajiPokok || !gajiHariItu) {
-                console.error('❌ Missing required fields');
-                alert('Mohon lengkapi semua field yang diperlukan');
+                showToast('error', 'Mohon lengkapi semua field yang diperlukan');
                 return false;
             }
-            
-            console.log('✅ Form validation passed, submitting...');
-            
-            // Show loading state
+
             const submitBtn = form.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i>Menyimpan...';
-            
+
             try {
                 const formData = new FormData(form);
-                
+
                 const response = await fetch(form.action, {
                     method: 'POST',
                     body: formData,
@@ -300,102 +321,43 @@ $(document).ready(function() {
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 });
-                
+
                 const result = await response.json();
-                console.log('Response:', result);
-                
+
                 if (response.ok && result.success) {
-                    // Show success message
-                    alert('Data absensi berhasil disimpan!');
-                    window.location.href = '{{ route(auth()->user()->isManager() ? "manager.absensis.index" : "admin.absensis.index") }}';
+                    showToast('success', 'Data absensi berhasil disimpan!');
+                    setTimeout(() => {
+                        window.location.href = result.redirect || '{{ route(auth()->user()->isManager() ? "manager.absensis.index" : "admin.absensis.index") }}';
+                    }, 1000);
                 } else {
-                    // Handle error response
                     let errorMessage = 'Terjadi kesalahan saat menyimpan data';
                     if (result.message) {
                         errorMessage = result.message;
                     } else if (response.status === 409) {
-                        errorMessage = 'Data absensi untuk karyawan ini pada tanggal tersebut sudah ada. Silakan pilih tanggal lain atau cek data yang sudah ada.';
+                        errorMessage = 'Data absensi untuk karyawan ini pada tanggal tersebut sudah ada';
                     } else if (response.status === 422) {
-                        errorMessage = 'Data yang dimasukkan tidak valid. Silakan periksa kembali.';
+                        errorMessage = 'Data yang dimasukkan tidak valid';
                     }
-                    
-                    alert('Error: ' + errorMessage);
-                    
-                    // Restore button
+
+                    showToast('error', errorMessage);
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalText;
                 }
-                
+
             } catch (error) {
-                console.error('❌ Form submission error:', error);
-                
+                console.error('Form submission error:', error);
+
                 let errorMessage = 'Terjadi kesalahan: ' + error.message;
                 if (error.message.includes('409')) {
-                    errorMessage = 'Data absensi untuk karyawan ini pada tanggal tersebut sudah ada. Silakan pilih tanggal lain.';
+                    errorMessage = 'Data absensi untuk karyawan ini pada tanggal tersebut sudah ada';
                 }
-                
-                alert(errorMessage);
-                
-                // Restore button
+
+                showToast('error', errorMessage);
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = originalText;
             }
         });
     }
 });
-
-// Force clear browser cache and refresh data
-function forceClearCache() {
-    console.log('🧹 Force clearing browser cache...');
-    
-    // Clear service worker cache
-    if ('caches' in window) {
-        caches.keys().then(function(names) {
-            for (let name of names) {
-                caches.delete(name);
-            }
-            console.log('✅ Service worker cache cleared');
-        });
-    }
-    
-    // Clear localStorage
-    localStorage.clear();
-    console.log('✅ LocalStorage cleared');
-    
-    // Clear sessionStorage
-    sessionStorage.clear();
-    console.log('✅ SessionStorage cleared');
-    
-    // Force reload page with cache busting
-    const timestamp = new Date().getTime();
-    window.location.href = window.location.href + '?t=' + timestamp;
-}
-
-// Auto-clear cache on page load - DISABLED to prevent continuous refresh
-// setTimeout(forceClearCache, 1000);
-
-// Auto-refresh employee data if empty
-function checkAndRefreshEmployeeData() {
-    const employeeSelect = document.getElementById('employee_id');
-    if (employeeSelect && employeeSelect.options.length <= 1) {
-        console.log('⚠️ No employee data found, refreshing...');
-        // Add loading indicator
-        employeeSelect.innerHTML = '<option value="">Memuat data karyawan...</option>';
-        
-        // Refresh the page after 2 seconds
-        setTimeout(() => {
-            window.location.reload();
-        }, 2000);
-    }
-}
-
-// Employee dropdown is now loaded directly from server
-// No need for dynamic loading based on pembibitan
-
-    // Employee dropdown is now loaded directly from server
-    // No need for dynamic loading based on pembibitan
-    document.addEventListener('DOMContentLoaded', function() {
-        checkAndRefreshEmployeeData();
-    });
 </script>
 @endpush

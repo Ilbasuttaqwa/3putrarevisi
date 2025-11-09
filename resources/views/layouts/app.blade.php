@@ -19,6 +19,13 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     
     <style>
         .sidebar {
@@ -727,10 +734,86 @@
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
-    
+
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <!-- App JavaScript -->
     @vite(['resources/js/app.js'])
-    
+
+    <!-- Global Toast Notification Handler -->
+    <script>
+        // Configure SweetAlert2 Toast
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+
+        // Show toast from Laravel session flash messages
+        @if(session('success'))
+            Toast.fire({
+                icon: 'success',
+                title: '{{ session("success") }}'
+            });
+        @endif
+
+        @if(session('error'))
+            Toast.fire({
+                icon: 'error',
+                title: '{{ session("error") }}'
+            });
+        @endif
+
+        @if(session('warning'))
+            Toast.fire({
+                icon: 'warning',
+                title: '{{ session("warning") }}'
+            });
+        @endif
+
+        @if(session('info'))
+            Toast.fire({
+                icon: 'info',
+                title: '{{ session("info") }}'
+            });
+        @endif
+
+        // Global function to show toast
+        window.showToast = function(icon, title) {
+            Toast.fire({
+                icon: icon,
+                title: title
+            });
+        };
+
+        // Global function to show confirmation dialog
+        window.confirmDelete = function(url, title = 'Apakah Anda yakin?', text = 'Data yang dihapus tidak dapat dikembalikan!') {
+            return Swal.fire({
+                title: title,
+                text: text,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus!',
+                cancelButtonText: 'Batal'
+            });
+        };
+    </script>
+
     @stack('scripts')
     </body>
     </html>
