@@ -1,4 +1,4 @@
-@extends('layouts.tailwind')
+@extends('layouts.app')
 
 @section('title', 'Tambah Absensi')
 
