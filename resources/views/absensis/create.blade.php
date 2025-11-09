@@ -1,490 +1,522 @@
-<!DOCTYPE html>
-<html lang="id" class="h-full bg-gray-50">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Tambah Absensi - Modern</title>
+@extends('layouts.app')
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+@section('title', 'Tambah Absensi')
 
-    <!-- Alpine.js -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+@push('styles')
+<!-- Force reload CSS -->
+<link rel="stylesheet" href="https://cdn.tailwindcss.com?v={{ time() }}">
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js?v={{ time() }}" defer></script>
+@endpush
 
-    <!-- SweetAlert2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <!-- Inter Font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        [x-cloak] { display: none !important; }
-
-        /* Custom scrollbar */
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        /* Fade in animation */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-in { animation: fadeIn 0.3s ease-out; }
-    </style>
-</head>
-<body class="h-full">
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50">
+@section('content')
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
-        <div class="bg-white shadow-sm border-b border-gray-200">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <a href="{{ route(auth()->user()->isManager() ? 'manager.absensis.index' : 'admin.absensis.index') }}"
-                           class="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                            </svg>
-                            Kembali
-                        </a>
-                        <span class="text-gray-300">|</span>
-                        <h1 class="text-2xl font-bold text-gray-900">Tambah Absensi</h1>
-                    </div>
-                    <div class="text-sm text-gray-500" x-data="{ now: new Date() }" x-init="setInterval(() => now = new Date(), 1000)">
-                        <span x-text="now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })"></span>
-                    </div>
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <a href="{{ route(auth()->user()->isManager() ? 'manager.absensis.index' : 'admin.absensis.index') }}"
+                       class="inline-flex items-center text-sm text-gray-600 hover:text-blue-600 transition-colors mb-2">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                        </svg>
+                        Kembali
+                    </a>
+                    <h1 class="text-3xl font-bold text-gray-900">✨ Tambah Absensi (NEW)</h1>
+                    <p class="text-gray-600 mt-1">Pilih tanggal dan catat kehadiran karyawan</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-500">Hari Ini</div>
+                    <div class="text-lg font-semibold text-gray-900" x-data x-text="new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+        <!-- Main Form Card -->
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
              x-data="absensiForm()"
              x-init="init()">
 
-            <!-- Form Card -->
-            <div class="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden fade-in">
-                <!-- Card Header -->
-                <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-                    <h2 class="text-xl font-semibold text-white flex items-center">
-                        <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                        </svg>
-                        Form Input Absensi
-                    </h2>
-                    <p class="text-blue-100 text-sm mt-1">Pilih tanggal dan tambahkan karyawan yang hadir</p>
+            <!-- Card Header -->
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-white/20 backdrop-blur-sm rounded-lg p-2">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-white">Form Absensi Karyawan</h2>
+                            <p class="text-blue-100 text-sm">Catat kehadiran harian dengan cepat dan akurat</p>
+                        </div>
+                    </div>
+                    <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+                        <div class="text-xs text-blue-100">Total Karyawan</div>
+                        <div class="text-2xl font-bold text-white" x-text="employees.length"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Body -->
+            <div class="p-8 space-y-6">
+                <!-- Tanggal Input -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        📅 Tanggal Absensi
+                        <span class="text-red-500">*</span>
+                    </label>
+                    <input type="date"
+                           x-model="tanggal"
+                           :max="new Date().toISOString().split('T')[0]"
+                           required
+                           class="w-full md:w-96 px-4 py-3 text-gray-900 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all font-medium"
+                           :class="errors.tanggal ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''">
+                    <p x-show="errors.tanggal" x-text="errors.tanggal" class="text-red-600 text-sm mt-1.5 font-medium" x-cloak></p>
                 </div>
 
-                <!-- Card Body -->
-                <div class="p-8">
-                    <!-- Date Input -->
-                    <div class="mb-8">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">
-                            Tanggal Absensi
-                            <span class="text-red-500">*</span>
-                        </label>
-                        <input type="date"
-                               x-model="tanggal"
-                               :max="new Date().toISOString().split('T')[0]"
-                               class="w-full md:w-96 px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 transition-all text-gray-900 font-medium"
-                               :class="errors.tanggal ? 'border-red-500' : ''"
-                               required>
-                        <p x-show="errors.tanggal" x-text="errors.tanggal" class="text-red-500 text-sm mt-1" x-cloak></p>
-                    </div>
-
-                    <!-- Search Bar -->
-                    <div class="mb-6">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">
-                            Cari Karyawan
-                        </label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                                </svg>
-                            </div>
-                            <input type="text"
-                                   x-model="searchQuery"
-                                   @input="filterEmployees()"
-                                   placeholder="Ketik nama karyawan, lokasi, atau kandang..."
-                                   class="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring focus:ring-blue-200 transition-all">
-                            <div x-show="searchQuery"
-                                 @click="searchQuery = ''; filterEmployees()"
-                                 class="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer">
-                                <svg class="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </div>
+                <!-- Search Bar -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        🔍 Cari Karyawan
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                        </div>
+                        <input type="text"
+                               x-model="searchQuery"
+                               @input="filterEmployees()"
+                               placeholder="Ketik nama karyawan untuk mencari..."
+                               class="w-full pl-12 pr-12 py-3.5 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all text-gray-900 placeholder-gray-400">
+                        <div x-show="searchQuery"
+                             @click="clearSearch()"
+                             class="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer group">
+                            <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
                         </div>
                     </div>
+                    <p class="text-xs text-gray-500 mt-1.5" x-show="searchQuery" x-cloak>
+                        Menampilkan <span class="font-semibold text-blue-600" x-text="filteredEmployees.length"></span> dari <span x-text="employees.length"></span> karyawan
+                    </p>
+                </div>
 
-                    <!-- Filter Buttons -->
-                    <div class="mb-6 flex flex-wrap gap-2">
-                        <button @click="filterBy = 'all'; filterEmployees()"
-                                :class="filterBy === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-                                class="px-4 py-2 rounded-lg font-medium text-sm transition-colors">
-                            Semua (<span x-text="employees.length"></span>)
-                        </button>
-                        <button @click="filterBy = 'karyawan_gudang'; filterEmployees()"
-                                :class="filterBy === 'karyawan_gudang' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-                                class="px-4 py-2 rounded-lg font-medium text-sm transition-colors">
-                            Karyawan Gudang (<span x-text="employees.filter(e => e.jabatan === 'karyawan_gudang').length"></span>)
-                        </button>
-                        <button @click="filterBy = 'karyawan'; filterEmployees()"
-                                :class="filterBy === 'karyawan' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-                                class="px-4 py-2 rounded-lg font-medium text-sm transition-colors">
-                            Karyawan Kandang (<span x-text="employees.filter(e => e.jabatan === 'karyawan').length"></span>)
-                        </button>
-                        <button @click="filterBy = 'mandor'; filterEmployees()"
-                                :class="filterBy === 'mandor' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-                                class="px-4 py-2 rounded-lg font-medium text-sm transition-colors">
-                            Mandor (<span x-text="employees.filter(e => e.jabatan === 'mandor').length"></span>)
-                        </button>
-                    </div>
+                <!-- Filter Buttons -->
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span class="text-sm font-semibold text-gray-700">Filter Cepat:</span>
+                    <button @click="setFilter('all')"
+                            :class="filterBy === 'all' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                            class="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:scale-105">
+                        Semua (<span x-text="employees.length"></span>)
+                    </button>
+                    <button @click="setFilter('karyawan_gudang')"
+                            :class="filterBy === 'karyawan_gudang' ? 'bg-green-600 text-white shadow-lg shadow-green-500/30' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                            class="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:scale-105">
+                        🏪 Karyawan Gudang (<span x-text="employees.filter(e => e.jabatan === 'karyawan_gudang').length"></span>)
+                    </button>
+                    <button @click="setFilter('karyawan')"
+                            :class="filterBy === 'karyawan' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                            class="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:scale-105">
+                        🏠 Karyawan Kandang (<span x-text="employees.filter(e => e.jabatan === 'karyawan').length"></span>)
+                    </button>
+                    <button @click="setFilter('mandor')"
+                            :class="filterBy === 'mandor' ? 'bg-orange-600 text-white shadow-lg shadow-orange-500/30' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
+                            class="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:scale-105">
+                        👷 Mandor (<span x-text="employees.filter(e => e.jabatan === 'mandor').length"></span>)
+                    </button>
+                </div>
 
-                    <!-- Table -->
-                    <div class="border-2 border-gray-200 rounded-xl overflow-hidden">
-                        <div class="overflow-x-auto custom-scrollbar" style="max-height: 600px;">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50 sticky top-0 z-10">
-                                    <tr>
-                                        <th class="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <!-- Table -->
+                <div class="border-2 border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                    <div class="overflow-x-auto" style="max-height: 500px;">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-4 text-left">
+                                        <input type="checkbox"
+                                               @change="toggleAll($event.target.checked)"
+                                               :checked="selectedEmployees.length === filteredEmployees.length && filteredEmployees.length > 0"
+                                               class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer">
+                                    </th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Nama Karyawan</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tipe</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Lokasi</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Kandang</th>
+                                    <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Gaji Pokok</th>
+                                    <th class="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Status Kehadiran</th>
+                                    <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Gaji Hari Ini</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <template x-for="employee in filteredEmployees" :key="employee.id">
+                                    <tr class="hover:bg-blue-50/50 transition-colors"
+                                        :class="selectedEmployees.includes(employee.id) ? 'bg-blue-50' : ''">
+                                        <td class="px-4 py-4">
                                             <input type="checkbox"
-                                                   @change="toggleAll($event.target.checked)"
-                                                   class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
-                                        </th>
-                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Nama Karyawan</th>
-                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tipe</th>
-                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Lokasi</th>
-                                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Kandang</th>
-                                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Gaji Pokok</th>
-                                        <th class="px-6 py-3 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Status</th>
-                                        <th class="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Gaji Hari Ini</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <template x-for="(employee, index) in filteredEmployees" :key="employee.id">
-                                        <tr class="hover:bg-blue-50 transition-colors"
-                                            :class="selectedEmployees.includes(employee.id) ? 'bg-blue-50' : ''">
-                                            <td class="px-4 py-4 whitespace-nowrap">
-                                                <input type="checkbox"
-                                                       :value="employee.id"
-                                                       @change="toggleEmployee(employee.id, $event.target.checked)"
-                                                       :checked="selectedEmployees.includes(employee.id)"
-                                                       class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="font-semibold text-gray-900" x-text="employee.nama"></div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full"
-                                                      :class="{
-                                                          'bg-green-100 text-green-800': employee.jabatan === 'karyawan_gudang',
-                                                          'bg-purple-100 text-purple-800': employee.jabatan === 'karyawan',
-                                                          'bg-orange-100 text-orange-800': employee.jabatan === 'mandor'
-                                                      }"
-                                                      x-text="formatJabatan(employee.jabatan)">
-                                                </span>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                <span x-text="employee.lokasi?.nama_lokasi || '-'"></span>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                                <span x-text="employee.kandang?.nama_kandang || '-'"></span>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900">
-                                                <span x-text="formatRupiah(employee.gaji_pokok)"></span>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <select x-model="employeeStatus[employee.id]"
-                                                        @change="calculateGaji(employee.id)"
-                                                        :disabled="!selectedEmployees.includes(employee.id)"
-                                                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring focus:ring-blue-200 text-sm transition-all"
-                                                        :class="!selectedEmployees.includes(employee.id) ? 'bg-gray-100 cursor-not-allowed' : ''">
-                                                    <option value="">Pilih</option>
-                                                    <option value="full">Full Day</option>
-                                                    <option value="setengah_hari">Half Day</option>
-                                                    <option value="off">Off</option>
-                                                </select>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right">
-                                                <span class="text-sm font-bold"
-                                                      :class="{
-                                                          'text-green-600': employeeStatus[employee.id] === 'full',
-                                                          'text-yellow-600': employeeStatus[employee.id] === 'setengah_hari',
-                                                          'text-red-600': employeeStatus[employee.id] === 'off',
-                                                          'text-gray-400': !employeeStatus[employee.id]
-                                                      }"
-                                                      x-text="formatRupiah(employeeGaji[employee.id] || 0)">
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                    <tr x-show="filteredEmployees.length === 0">
-                                        <td colspan="8" class="px-6 py-12 text-center">
-                                            <div class="text-gray-400">
-                                                <svg class="mx-auto h-12 w-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                                                </svg>
-                                                <p class="text-sm font-medium">Tidak ada karyawan ditemukan</p>
-                                                <p class="text-xs mt-1">Coba ubah filter atau kata kunci pencarian</p>
-                                            </div>
+                                                   :checked="selectedEmployees.includes(employee.id)"
+                                                   @change="toggleEmployee(employee.id, $event.target.checked)"
+                                                   class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer">
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="font-semibold text-gray-900" x-text="employee.nama"></div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full"
+                                                  :class="{
+                                                      'bg-green-100 text-green-800': employee.jabatan === 'karyawan_gudang',
+                                                      'bg-purple-100 text-purple-800': employee.jabatan === 'karyawan',
+                                                      'bg-orange-100 text-orange-800': employee.jabatan === 'mandor'
+                                                  }"
+                                                  x-text="formatJabatan(employee.jabatan)">
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                            <span x-text="employee.lokasi?.nama_lokasi || '-'"></span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                            <span x-text="employee.kandang?.nama_kandang || '-'"></span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                                            <span class="text-sm font-bold text-gray-900" x-text="formatRupiah(employee.gaji_pokok)"></span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <select x-model="employeeStatus[employee.id]"
+                                                    @change="calculateGaji(employee.id)"
+                                                    :disabled="!selectedEmployees.includes(employee.id)"
+                                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
+                                                    :class="!selectedEmployees.includes(employee.id) ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'bg-white'">
+                                                <option value="">Pilih Status</option>
+                                                <option value="full">✓ Full Day</option>
+                                                <option value="setengah_hari">⚡ Half Day</option>
+                                                <option value="off">✗ Off</option>
+                                            </select>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                                            <span class="text-sm font-bold transition-colors"
+                                                  :class="{
+                                                      'text-green-600': employeeStatus[employee.id] === 'full',
+                                                      'text-yellow-600': employeeStatus[employee.id] === 'setengah_hari',
+                                                      'text-red-600': employeeStatus[employee.id] === 'off',
+                                                      'text-gray-400': !employeeStatus[employee.id]
+                                                  }"
+                                                  x-text="formatRupiah(employeeGaji[employee.id] || 0)">
+                                            </span>
                                         </td>
                                     </tr>
-                                </tbody>
-                            </table>
+                                </template>
+                                <tr x-show="filteredEmployees.length === 0">
+                                    <td colspan="8" class="px-6 py-16 text-center">
+                                        <div class="flex flex-col items-center justify-center text-gray-400">
+                                            <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            </svg>
+                                            <p class="text-lg font-medium text-gray-500">Tidak ada karyawan ditemukan</p>
+                                            <p class="text-sm text-gray-400 mt-1">Coba ubah filter atau kata kunci pencarian</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Karyawan Dipilih</div>
+                                <div class="text-3xl font-bold text-blue-900" x-text="selectedEmployees.length"></div>
+                            </div>
+                            <div class="bg-blue-500 rounded-full p-3">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                </svg>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Summary -->
-                    <div class="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="bg-white rounded-lg p-4 shadow-sm">
-                                <div class="text-sm text-gray-600 mb-1">Total Karyawan Dipilih</div>
-                                <div class="text-2xl font-bold text-blue-600" x-text="selectedEmployees.length"></div>
+                    <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Total Gaji Pokok</div>
+                                <div class="text-2xl font-bold text-green-900" x-text="formatRupiah(totalGajiPokok())"></div>
                             </div>
-                            <div class="bg-white rounded-lg p-4 shadow-sm">
-                                <div class="text-sm text-gray-600 mb-1">Total Gaji Pokok</div>
-                                <div class="text-2xl font-bold text-green-600" x-text="formatRupiah(totalGajiPokok())"></div>
-                            </div>
-                            <div class="bg-white rounded-lg p-4 shadow-sm">
-                                <div class="text-sm text-gray-600 mb-1">Total Gaji Hari Ini</div>
-                                <div class="text-2xl font-bold text-purple-600" x-text="formatRupiah(totalGajiHariIni())"></div>
+                            <div class="bg-green-500 rounded-full p-3">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="mt-8 flex items-center justify-end space-x-4">
-                        <a href="{{ route(auth()->user()->isManager() ? 'manager.absensis.index' : 'admin.absensis.index') }}"
-                           class="px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all">
-                            Batal
-                        </a>
-                        <button @click="submitForm()"
-                                :disabled="!canSubmit()"
-                                :class="canSubmit() ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'"
-                                class="px-8 py-3 font-semibold rounded-xl transition-all shadow-lg flex items-center space-x-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
-                            <span x-text="loading ? 'Menyimpan...' : 'Simpan Absensi'"></span>
-                        </button>
+                    <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-1">Total Gaji Hari Ini</div>
+                                <div class="text-2xl font-bold text-purple-900" x-text="formatRupiah(totalGajiHariIni())"></div>
+                            </div>
+                            <div class="bg-purple-500 rounded-full p-3">
+                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 8h6m-5 0a3 3 0 110 6H9l3 3m-3-6h6m6 1a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                        </div>
                     </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+                    <a href="{{ route(auth()->user()->isManager() ? 'manager.absensis.index' : 'admin.absensis.index') }}"
+                       class="inline-flex items-center px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all hover:scale-105">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        Batal
+                    </a>
+
+                    <button @click="submitForm()"
+                            :disabled="!canSubmit()"
+                            :class="canSubmit() ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/50 hover:shadow-xl hover:shadow-blue-500/50 hover:scale-105' : 'bg-gray-300 text-gray-500 cursor-not-allowed'"
+                            class="inline-flex items-center px-8 py-3 font-bold rounded-xl transition-all">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="!loading">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <svg class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" x-show="loading" x-cloak>
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span x-text="loading ? 'Menyimpan...' : '💾 Simpan Absensi'"></span>
+                    </button>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        function absensiForm() {
-            return {
-                // Data
-                tanggal: new Date().toISOString().split('T')[0],
-                employees: @json($allEmployees ?? []),
-                filteredEmployees: [],
-                selectedEmployees: [],
-                employeeStatus: {},
-                employeeGaji: {},
-                searchQuery: '',
-                filterBy: 'all',
-                loading: false,
-                errors: {},
+<!-- Alpine.js Script -->
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('absensiForm', () => ({
+            // Data
+            tanggal: new Date().toISOString().split('T')[0],
+            employees: @json($allEmployees ?? []),
+            filteredEmployees: [],
+            selectedEmployees: [],
+            employeeStatus: {},
+            employeeGaji: {},
+            searchQuery: '',
+            filterBy: 'all',
+            loading: false,
+            errors: {},
 
-                // Initialize
-                init() {
-                    this.filteredEmployees = this.employees;
-                    console.log('Loaded employees:', this.employees.length);
-                },
+            // Initialize
+            init() {
+                this.filteredEmployees = this.employees;
+                console.log('✅ Form Tailwind Loaded -', this.employees.length, 'employees');
+            },
 
-                // Filter employees
-                filterEmployees() {
-                    let filtered = this.employees;
+            // Filter employees
+            filterEmployees() {
+                let filtered = this.employees;
 
-                    // Filter by type
-                    if (this.filterBy !== 'all') {
-                        filtered = filtered.filter(e => e.jabatan === this.filterBy);
+                // Filter by type
+                if (this.filterBy !== 'all') {
+                    filtered = filtered.filter(e => e.jabatan === this.filterBy);
+                }
+
+                // Filter by search query
+                if (this.searchQuery) {
+                    const query = this.searchQuery.toLowerCase();
+                    filtered = filtered.filter(e =>
+                        e.nama.toLowerCase().includes(query) ||
+                        (e.lokasi?.nama_lokasi || '').toLowerCase().includes(query) ||
+                        (e.kandang?.nama_kandang || '').toLowerCase().includes(query)
+                    );
+                }
+
+                this.filteredEmployees = filtered;
+            },
+
+            // Set filter and apply
+            setFilter(type) {
+                this.filterBy = type;
+                this.filterEmployees();
+            },
+
+            // Clear search
+            clearSearch() {
+                this.searchQuery = '';
+                this.filterEmployees();
+            },
+
+            // Toggle single employee
+            toggleEmployee(id, checked) {
+                if (checked) {
+                    if (!this.selectedEmployees.includes(id)) {
+                        this.selectedEmployees.push(id);
                     }
-
-                    // Filter by search query
-                    if (this.searchQuery) {
-                        const query = this.searchQuery.toLowerCase();
-                        filtered = filtered.filter(e =>
-                            e.nama.toLowerCase().includes(query) ||
-                            (e.lokasi?.nama_lokasi || '').toLowerCase().includes(query) ||
-                            (e.kandang?.nama_kandang || '').toLowerCase().includes(query) ||
-                            this.formatJabatan(e.jabatan).toLowerCase().includes(query)
-                        );
+                    // Set default status to full
+                    if (!this.employeeStatus[id]) {
+                        this.employeeStatus[id] = 'full';
+                        this.calculateGaji(id);
                     }
+                } else {
+                    this.selectedEmployees = this.selectedEmployees.filter(empId => empId !== id);
+                    delete this.employeeStatus[id];
+                    delete this.employeeGaji[id];
+                }
+            },
 
-                    this.filteredEmployees = filtered;
-                },
-
-                // Toggle single employee
-                toggleEmployee(id, checked) {
-                    if (checked) {
-                        if (!this.selectedEmployees.includes(id)) {
-                            this.selectedEmployees.push(id);
+            // Toggle all employees
+            toggleAll(checked) {
+                if (checked) {
+                    this.filteredEmployees.forEach(emp => {
+                        if (!this.selectedEmployees.includes(emp.id)) {
+                            this.selectedEmployees.push(emp.id);
+                            this.employeeStatus[emp.id] = 'full';
+                            this.calculateGaji(emp.id);
                         }
-                        // Set default status to full
-                        if (!this.employeeStatus[id]) {
-                            this.employeeStatus[id] = 'full';
-                            this.calculateGaji(id);
-                        }
+                    });
+                } else {
+                    this.filteredEmployees.forEach(emp => {
+                        this.selectedEmployees = this.selectedEmployees.filter(id => id !== emp.id);
+                        delete this.employeeStatus[emp.id];
+                        delete this.employeeGaji[emp.id];
+                    });
+                }
+            },
+
+            // Calculate gaji
+            calculateGaji(employeeId) {
+                const employee = this.employees.find(e => e.id === employeeId);
+                if (!employee) return;
+
+                const status = this.employeeStatus[employeeId];
+                const gajiPokok = employee.gaji_pokok || 0;
+
+                if (status === 'full') {
+                    this.employeeGaji[employeeId] = gajiPokok / 30;
+                } else if (status === 'setengah_hari') {
+                    this.employeeGaji[employeeId] = gajiPokok / 60;
+                } else if (status === 'off') {
+                    this.employeeGaji[employeeId] = 0;
+                } else {
+                    this.employeeGaji[employeeId] = 0;
+                }
+            },
+
+            // Format rupiah
+            formatRupiah(amount) {
+                return new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                }).format(amount || 0);
+            },
+
+            // Format jabatan
+            formatJabatan(jabatan) {
+                const mapping = {
+                    'karyawan_gudang': 'Karyawan Gudang',
+                    'karyawan': 'Karyawan Kandang',
+                    'mandor': 'Mandor'
+                };
+                return mapping[jabatan] || jabatan;
+            },
+
+            // Calculate totals
+            totalGajiPokok() {
+                return this.selectedEmployees.reduce((total, id) => {
+                    const emp = this.employees.find(e => e.id === id);
+                    return total + (emp?.gaji_pokok || 0);
+                }, 0);
+            },
+
+            totalGajiHariIni() {
+                return this.selectedEmployees.reduce((total, id) => {
+                    return total + (this.employeeGaji[id] || 0);
+                }, 0);
+            },
+
+            // Validation
+            canSubmit() {
+                return this.tanggal &&
+                       this.selectedEmployees.length > 0 &&
+                       this.selectedEmployees.every(id => this.employeeStatus[id]) &&
+                       !this.loading;
+            },
+
+            // Submit form
+            async submitForm() {
+                if (!this.canSubmit()) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Peringatan!',
+                        text: 'Mohon lengkapi semua data sebelum menyimpan',
+                        confirmButtonColor: '#3B82F6'
+                    });
+                    return;
+                }
+
+                this.loading = true;
+                this.errors = {};
+
+                const employeesData = this.selectedEmployees.map(id => ({
+                    id: id,
+                    status: this.employeeStatus[id],
+                    pembibitan_id: null
+                }));
+
+                try {
+                    const response = await fetch('{{ route(auth()->user()->isManager() ? "manager.absensis.bulk-store" : "admin.absensis.bulk-store") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            tanggal: this.tanggal,
+                            employees: employeesData
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok && result.success) {
+                        await Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: result.message || `Berhasil menyimpan ${employeesData.length} absensi karyawan`,
+                            confirmButtonColor: '#22C55E',
+                            timer: 2000
+                        });
+                        window.location.href = '{{ route(auth()->user()->isManager() ? "manager.absensis.index" : "admin.absensis.index") }}';
                     } else {
-                        this.selectedEmployees = this.selectedEmployees.filter(empId => empId !== id);
-                        delete this.employeeStatus[id];
-                        delete this.employeeGaji[id];
+                        throw new Error(result.message || 'Terjadi kesalahan');
                     }
-                },
-
-                // Toggle all employees
-                toggleAll(checked) {
-                    if (checked) {
-                        this.filteredEmployees.forEach(emp => {
-                            if (!this.selectedEmployees.includes(emp.id)) {
-                                this.selectedEmployees.push(emp.id);
-                                this.employeeStatus[emp.id] = 'full';
-                                this.calculateGaji(emp.id);
-                            }
-                        });
-                    } else {
-                        this.filteredEmployees.forEach(emp => {
-                            this.selectedEmployees = this.selectedEmployees.filter(id => id !== emp.id);
-                            delete this.employeeStatus[emp.id];
-                            delete this.employeeGaji[emp.id];
-                        });
-                    }
-                },
-
-                // Calculate gaji
-                calculateGaji(employeeId) {
-                    const employee = this.employees.find(e => e.id === employeeId);
-                    if (!employee) return;
-
-                    const status = this.employeeStatus[employeeId];
-                    const gajiPokok = employee.gaji_pokok || 0;
-
-                    if (status === 'full') {
-                        this.employeeGaji[employeeId] = gajiPokok / 30;
-                    } else if (status === 'setengah_hari') {
-                        this.employeeGaji[employeeId] = (gajiPokok / 30) / 2;
-                    } else if (status === 'off') {
-                        this.employeeGaji[employeeId] = 0;
-                    } else {
-                        this.employeeGaji[employeeId] = 0;
-                    }
-                },
-
-                // Format rupiah
-                formatRupiah(amount) {
-                    return new Intl.NumberFormat('id-ID', {
-                        style: 'currency',
-                        currency: 'IDR',
-                        minimumFractionDigits: 0
-                    }).format(amount || 0);
-                },
-
-                // Format jabatan
-                formatJabatan(jabatan) {
-                    const mapping = {
-                        'karyawan_gudang': 'Karyawan Gudang',
-                        'karyawan': 'Karyawan Kandang',
-                        'mandor': 'Mandor'
-                    };
-                    return mapping[jabatan] || jabatan;
-                },
-
-                // Calculate totals
-                totalGajiPokok() {
-                    return this.selectedEmployees.reduce((total, id) => {
-                        const emp = this.employees.find(e => e.id === id);
-                        return total + (emp?.gaji_pokok || 0);
-                    }, 0);
-                },
-
-                totalGajiHariIni() {
-                    return this.selectedEmployees.reduce((total, id) => {
-                        return total + (this.employeeGaji[id] || 0);
-                    }, 0);
-                },
-
-                // Validation
-                canSubmit() {
-                    return this.tanggal &&
-                           this.selectedEmployees.length > 0 &&
-                           this.selectedEmployees.every(id => this.employeeStatus[id]) &&
-                           !this.loading;
-                },
-
-                // Submit form
-                async submitForm() {
-                    if (!this.canSubmit()) {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Peringatan',
-                            text: 'Mohon lengkapi semua data sebelum menyimpan!',
-                            confirmButtonColor: '#3b82f6'
-                        });
-                        return;
-                    }
-
-                    this.loading = true;
-                    this.errors = {};
-
-                    // Prepare data in format expected by bulkStore
-                    const employeesData = this.selectedEmployees.map(id => ({
-                        id: id,
-                        status: this.employeeStatus[id],
-                        pembibitan_id: null
-                    }));
-
-                    try {
-                        const response = await fetch('{{ route(auth()->user()->isManager() ? "manager.absensis.bulk-store" : "admin.absensis.bulk-store") }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                'Accept': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                tanggal: this.tanggal,
-                                employees: employeesData
-                            })
-                        });
-
-                        const result = await response.json();
-
-                        if (response.ok && result.success) {
-                            await Swal.fire({
-                                icon: 'success',
-                                title: 'Berhasil!',
-                                text: result.message || `Berhasil menyimpan ${result.success_count || employeesData.length} absensi karyawan`,
-                                confirmButtonColor: '#3b82f6',
-                                timer: 2000
-                            });
-                            window.location.href = '{{ route(auth()->user()->isManager() ? "manager.absensis.index" : "admin.absensis.index") }}';
-                        } else {
-                            throw new Error(result.message || 'Terjadi kesalahan');
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Gagal!',
-                            text: error.message || 'Terjadi kesalahan saat menyimpan data',
-                            confirmButtonColor: '#ef4444'
-                        });
-                    } finally {
-                        this.loading = false;
-                    }
+                } catch (error) {
+                    console.error('❌ Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal!',
+                        text: error.message || 'Terjadi kesalahan saat menyimpan data',
+                        confirmButtonColor: '#EF4444'
+                    });
+                } finally {
+                    this.loading = false;
                 }
             }
-        }
-    </script>
-</body>
-</html>
+        }));
+    });
+</script>
+
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+@endsection
