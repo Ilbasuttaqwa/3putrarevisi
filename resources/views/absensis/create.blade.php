@@ -2,6 +2,12 @@
 
 @section('title', 'Tambah Absensi')
 
+@push('styles')
+<!-- Force reload CSS -->
+<link rel="stylesheet" href="https://cdn.tailwindcss.com?v={{ time() }}">
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js?v={{ time() }}" defer></script>
+@endpush
+
 @section('content')
 <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -16,7 +22,7 @@
                         </svg>
                         Kembali
                     </a>
-                    <h1 class="text-3xl font-bold text-gray-900">Tambah Absensi</h1>
+                    <h1 class="text-3xl font-bold text-gray-900">✨ Tambah Absensi (NEW)</h1>
                     <p class="text-gray-600 mt-1">Pilih tanggal dan catat kehadiran karyawan</p>
                 </div>
                 <div class="text-right">
@@ -310,7 +316,7 @@
             // Initialize
             init() {
                 this.filteredEmployees = this.employees;
-                console.log('✅ Loaded', this.employees.length, 'employees');
+                console.log('✅ Form Tailwind Loaded -', this.employees.length, 'employees');
             },
 
             // Filter employees
