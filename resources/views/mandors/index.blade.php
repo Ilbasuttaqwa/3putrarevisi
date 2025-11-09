@@ -101,9 +101,12 @@
 @push('scripts')
 <script>
     function confirmDelete(button) {
+        const id = button.getAttribute('data-item-id');
+        const name = button.getAttribute('data-item-name');
+
         document.getElementById('mandorName').textContent = name;
         document.getElementById('deleteForm').action = '{{ route("manager.mandors.destroy", ":id") }}'.replace(':id', id);
-        
+
         const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
         modal.show();
     }
