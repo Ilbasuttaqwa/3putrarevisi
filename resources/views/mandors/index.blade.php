@@ -33,7 +33,7 @@
                         @foreach($mandors as $index => $mandor)
                             <tr>
                                 <td>{{ $mandors->firstItem() + $index }}</td>
-                                <td>{{ $mandor->nama }}</td>
+                                <td><strong>{{ $mandor->nama }}</strong></td>
                                 <td>Rp {{ number_format($mandor->gaji, 0, ',', '.') }}</td>
                                 <td>
                                     <div class="btn-group btn-group-sm" role="group">

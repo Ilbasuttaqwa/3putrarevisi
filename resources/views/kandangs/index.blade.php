@@ -37,7 +37,7 @@
                         @foreach($kandangs as $index => $kandang)
                             <tr>
                                 <td>{{ $kandangs->firstItem() + $index }}</td>
-                                <td>{{ $kandang->nama_kandang }}</td>
+                                <td><strong>{{ $kandang->nama_kandang }}</strong></td>
                                 <td>
                                     @if($kandang->lokasi)
                                         <span class="badge bg-info">{{ $kandang->lokasi->nama_lokasi }}</span>

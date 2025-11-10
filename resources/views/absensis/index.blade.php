@@ -397,11 +397,14 @@ $(document).ready(function() {
                 width: '5%',
                 title: 'No'
             },
-            { 
-                data: 'nama_karyawan', 
+            {
+                data: 'nama_karyawan',
                 name: 'nama_karyawan',
                 width: '18%',
-                title: 'Nama Karyawan'
+                title: 'Nama Karyawan',
+                render: function(data, type, row) {
+                    return '<strong>' + data + '</strong>';
+                }
             },
             { 
                 data: 'role_karyawan', 

@@ -32,7 +32,7 @@
                         @foreach($gudangs as $index => $gudang)
                             <tr>
                                 <td>{{ $gudangs->firstItem() + $index }}</td>
-                                <td>{{ $gudang->nama }}</td>
+                                <td><strong>{{ $gudang->nama }}</strong></td>
                                 <td>
                                     <span class="text-success fw-bold">
                                         Rp {{ number_format($gudang->gaji, 0, ',', '.') }}
