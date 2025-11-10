@@ -127,7 +127,22 @@ class AbsensiController extends Controller
                     return 'Data Karyawan Hilang';
                 })
                 ->addColumn('role_karyawan', function($absensi) {
-                    // Use eager loaded relationship (no extra query!)
+                    // ============================================================
+                    // PRIORITY 1: Read from stored 'jabatan' field (ALWAYS CORRECT)
+                    // This field is saved during absensi creation for ALL employee types
+                    // ============================================================
+                    if (!empty($absensi->jabatan)) {
+                        return match($absensi->jabatan) {
+                            'karyawan' => 'karyawan kandang',
+                            'karyawan_gudang' => 'karyawan gudang',
+                            'mandor' => 'mandor',
+                            default => $absensi->jabatan
+                        };
+                    }
+
+                    // ============================================================
+                    // FALLBACK: Try employee relationship (for old records before migration)
+                    // ============================================================
                     if ($absensi->employee && $absensi->employee->jabatan) {
                         $jabatan = $absensi->employee->jabatan;
                         return match($jabatan) {
@@ -138,14 +153,7 @@ class AbsensiController extends Controller
                         };
                     }
 
-                    // For non-employee (gudang/mandor), detect from stored data
-                    // Simple heuristic: if employee_id is null, likely gudang/mandor
-                    if (!$absensi->employee_id && !empty($absensi->nama_karyawan)) {
-                        // Default assumption for non-employee records
-                        return 'karyawan kandang';
-                    }
-
-                    return 'karyawan kandang';
+                    return '-';
                 })
                 ->addColumn('status_badge', function($absensi) {
                     $badgeClass = match($absensi->status) {
