@@ -103,9 +103,15 @@ class SalaryReportController extends Controller
                   ->where('bulan', $bulan)
                   ->whereNotNull('kandang_id');
         })->orderBy('nama_kandang')->get();
-        
-        // Tampilkan semua pembibitan yang tersedia
-        $pembibitans = Pembibitan::orderBy('judul')->get();
+
+        // Tampilkan hanya pembibitan yang memiliki data laporan gaji
+        $pembibitans = Pembibitan::whereIn('id', function($query) use ($tahun, $bulan) {
+            $query->select('pembibitan_id')
+                  ->from('salary_reports')
+                  ->where('tahun', $tahun)
+                  ->where('bulan', $bulan)
+                  ->whereNotNull('pembibitan_id');
+        })->orderBy('judul')->get();
 
         $availableMonths = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',

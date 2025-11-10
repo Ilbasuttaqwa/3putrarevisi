@@ -63,7 +63,8 @@
                             <label for="tipe" class="form-label">Tipe Karyawan</label>
                             <select name="tipe" id="tipe" class="form-select">
                                 <option value="all" {{ $tipe == 'all' ? 'selected' : '' }}>Semua</option>
-                                <option value="gudang" {{ $tipe == 'gudang' ? 'selected' : '' }}>Gudang</option>
+                                <option value="karyawan" {{ $tipe == 'karyawan' ? 'selected' : '' }}>Karyawan Kandang</option>
+                                <option value="gudang" {{ $tipe == 'gudang' ? 'selected' : '' }}>Karyawan Gudang</option>
                                 @if(auth()->user()->isManager())
                                     <option value="mandor" {{ $tipe == 'mandor' ? 'selected' : '' }}>Mandor</option>
                                 @endif
