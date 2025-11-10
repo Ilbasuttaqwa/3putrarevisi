@@ -82,6 +82,14 @@
         color: white;
     }
 
+    /* Pastikan semua elemen di header table juga putih */
+    .employee-table thead th,
+    .employee-table thead th *,
+    .employee-table thead th a,
+    .employee-table thead th span {
+        color: #ffffff !important;
+    }
+
     .employee-table th {
         font-weight: 600;
         text-transform: uppercase;
