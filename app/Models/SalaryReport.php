@@ -53,7 +53,8 @@ class SalaryReport extends Model
 
     public function pembibitan()
     {
-        return $this->belongsTo(Pembibitan::class);
+        // withTrashed() agar laporan gaji tetap bisa load pembibitan yang sudah dihapus
+        return $this->belongsTo(Pembibitan::class)->withTrashed();
     }
 
     // Accessors

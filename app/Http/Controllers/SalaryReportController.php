@@ -49,21 +49,14 @@ class SalaryReportController extends Controller
 
         // Selalu tampilkan data berdasarkan periode yang dipilih
         $query = SalaryReport::periode($tahun, $bulan)
-            ->tipeKaryawan($tipe);
-            
+            ->tipeKaryawan($tipe)
+            ->tanggalRange($tanggalMulai, $tanggalSelesai);
+
         // Admin tidak boleh melihat mandor
         if (auth()->user()->isAdmin()) {
             $query->where('tipe_karyawan', '!=', 'mandor');
         }
-            
-        // Filter tanggal mulai dan selesai
-        if ($tanggalMulai) {
-            $query->where('tanggal_mulai', '>=', Carbon::parse($tanggalMulai));
-        }
-        if ($tanggalSelesai) {
-            $query->where('tanggal_selesai', '<=', Carbon::parse($tanggalSelesai));
-        }
-                
+
         // Filter berdasarkan pembibitan, lokasi, dan kandang
         if ($pembibitanId) {
             // Jika pembibitan dipilih, filter berdasarkan pembibitan tersebut

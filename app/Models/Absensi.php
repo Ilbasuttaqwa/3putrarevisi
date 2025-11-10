@@ -34,9 +34,10 @@ class Absensi extends Model
     }
 
     // Relationship dengan Pembibitan (sesuai ERD)
+    // withTrashed() agar tetap bisa load pembibitan yang sudah dihapus (untuk jejak historis)
     public function pembibitan()
     {
-        return $this->belongsTo(Pembibitan::class, 'pembibitan_id');
+        return $this->belongsTo(Pembibitan::class, 'pembibitan_id')->withTrashed();
     }
 
     // Accessor untuk status yang lebih readable
