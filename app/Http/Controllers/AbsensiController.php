@@ -1156,6 +1156,13 @@ class AbsensiController extends Controller
             // Batch load ALL mandors (1 query)
             $mandorsMap = \App\Models\Mandor::whereIn('id', $mandorIds)->get()->keyBy('id');
 
+            // Batch load pembibitans with relations (for lokasi_kerja)
+            $pembibitanIds = array_filter(array_column($employees, 'pembibitan_id'));
+            $pembibitansMap = \App\Models\Pembibitan::with(['lokasi', 'kandang'])
+                ->whereIn('id', $pembibitanIds)
+                ->get()
+                ->keyBy('id');
+
             // Batch check existing absensi for today (1 query)
             // Get ALL absensi for these employees on this date
             $allEmployeeNames = [];
@@ -1208,8 +1215,7 @@ class AbsensiController extends Controller
                                 'id' => 'gudang_' . $gudang->id,
                                 'nama' => $gudang->nama,
                                 'jabatan' => 'karyawan_gudang',
-                                'gaji_pokok' => $gudang->gaji,
-                                'lokasi_kerja' => 'Kantor Pusat'
+                                'gaji_pokok' => $gudang->gaji
                             ];
                         }
                     } elseif (str_starts_with($employeeId, 'mandor_')) {
@@ -1221,8 +1227,7 @@ class AbsensiController extends Controller
                                 'id' => 'mandor_' . $mandor->id,
                                 'nama' => $mandor->nama,
                                 'jabatan' => 'mandor',
-                                'gaji_pokok' => $mandor->gaji,
-                                'lokasi_kerja' => 'Kantor Pusat'
+                                'gaji_pokok' => $mandor->gaji
                             ];
                         }
                     }
@@ -1264,7 +1269,9 @@ class AbsensiController extends Controller
 
                         // RULE 1: If already 2 shifts today → REJECT
                         if ($existingForEmployee->count() >= 2) {
-                            $errors[] = "❌ {$employee->nama} sudah memiliki 2 shift pada {$tanggal} (maksimal 2 shift per hari)";
+                            $errorMsg = "❌ {$employee->nama} sudah memiliki 2 shift pada {$tanggal} (maksimal 2 shift per hari)";
+                            $errors[] = $errorMsg;
+                            Log::warning("🚫 RULE 1 BLOCKED: {$errorMsg}");
                             continue;
                         }
 
@@ -1272,13 +1279,17 @@ class AbsensiController extends Controller
 
                         // RULE 2: If existing is FULL DAY → REJECT
                         if ($firstShift->status === 'full') {
-                            $errors[] = "❌ {$employee->nama} sudah absen Full Day pada {$tanggal} (tidak bisa tambah shift)";
+                            $errorMsg = "❌ {$employee->nama} sudah absen Full Day pada {$tanggal} (tidak bisa tambah shift)";
+                            $errors[] = $errorMsg;
+                            Log::warning("🚫 RULE 2 BLOCKED: {$errorMsg}");
                             continue;
                         }
 
                         // RULE 3: If NEW is FULL DAY but already has shift → REJECT
                         if ($newStatus === 'full') {
-                            $errors[] = "❌ {$employee->nama} sudah memiliki shift pada {$tanggal} (tidak bisa absen Full Day)";
+                            $errorMsg = "❌ {$employee->nama} sudah memiliki shift pada {$tanggal} (tidak bisa absen Full Day)";
+                            $errors[] = $errorMsg;
+                            Log::warning("🚫 RULE 3 BLOCKED: {$errorMsg}");
                             continue;
                         }
 
@@ -1291,12 +1302,14 @@ class AbsensiController extends Controller
                                     $pem = \App\Models\Pembibitan::find($newPembibitanId);
                                     $pembibitanName = $pem ? $pem->judul : 'Pembibitan #' . $newPembibitanId;
                                 }
-                                $errors[] = "❌ {$employee->nama} sudah absen setengah hari di {$pembibitanName} pada {$tanggal} (pilih pembibitan lain untuk shift ke-2)";
+                                $errorMsg = "❌ {$employee->nama} sudah absen setengah hari di {$pembibitanName} pada {$tanggal} (pilih pembibitan lain untuk shift ke-2)";
+                                $errors[] = $errorMsg;
+                                Log::warning("🚫 RULE 4 BLOCKED: {$errorMsg}");
                                 continue;
                             }
 
                             // ✅ Valid: Second half-day shift at different pembibitan
-                            Log::info("✅ Second shift allowed for {$employee->nama}", [
+                            Log::info("✅ RULE 4 PASSED: Second shift allowed for {$employee->nama}", [
                                 'date' => $tanggal,
                                 'first_shift_pembibitan' => $firstShift->pembibitan_id,
                                 'second_shift_pembibitan' => $newPembibitanId
@@ -1320,15 +1333,30 @@ class AbsensiController extends Controller
                         $gajiHariItu = 0; // off
                     }
 
+                    // ============================================================
+                    // BUSINESS RULE: Lokasi kerja HARUS dari pembibitan
+                    // Pembibitan → Kandang → Lokasi (relasi otomatis)
+                    // ============================================================
+                    $lokasiKerja = '-';
+                    $pembibitanId = $employeeData['pembibitan_id'] ?? null;
+
+                    if ($pembibitanId && $pembibitansMap->has($pembibitanId)) {
+                        $pembibitan = $pembibitansMap->get($pembibitanId);
+                        if ($pembibitan->lokasi) {
+                            $lokasiKerja = $pembibitan->lokasi->nama_lokasi;
+                        }
+                    }
+
                     // Prepare absensi record for bulk insert
                     $absensiRecord = [
                         'tanggal' => $tanggal,
                         'status' => $employeeData['status'],
                         'nama_karyawan' => $employee->nama,
+                        'jabatan' => $employee->jabatan,  // ✅ CRITICAL: Save role!
                         'gaji_pokok_saat_itu' => $gajiPokok,
                         'gaji_hari_itu' => $gajiHariItu,
-                        'lokasi_kerja' => $employee->lokasi_kerja ?? 'Kantor Pusat',
-                        'pembibitan_id' => $employeeData['pembibitan_id'] ?? null,
+                        'lokasi_kerja' => $lokasiKerja,  // ✅ CRITICAL: From pembibitan!
+                        'pembibitan_id' => $pembibitanId,
                         'employee_id' => null,
                         'created_at' => $now,
                         'updated_at' => $now,
@@ -1352,11 +1380,29 @@ class AbsensiController extends Controller
 
             $successCount = 0;
             if (!empty($absensiRecords)) {
+                // 🔍 DEBUG: Log what records we're about to insert
+                Log::info("📊 Preparing to insert absensi records", [
+                    'total_records' => count($absensiRecords),
+                    'records' => array_map(function($record) {
+                        return [
+                            'nama' => $record['nama_karyawan'],
+                            'jabatan' => $record['jabatan'],
+                            'tanggal' => $record['tanggal'],
+                            'status' => $record['status'],
+                            'pembibitan_id' => $record['pembibitan_id'],
+                            'lokasi_kerja' => $record['lokasi_kerja']
+                        ];
+                    }, $absensiRecords)
+                ]);
+
                 DB::beginTransaction();
                 try {
                     DB::table('absensis')->insert($absensiRecords);
                     $successCount = count($absensiRecords);
                     DB::commit();
+
+                    // ✅ Log successful insert
+                    Log::info("✅ Successfully inserted {$successCount} absensi records");
 
                     Log::info('Bulk absensi created', [
                         'count' => $successCount,
@@ -1364,7 +1410,12 @@ class AbsensiController extends Controller
                     ]);
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    Log::error('Bulk insert failed: ' . $e->getMessage());
+                    // ❌ Log detailed error information
+                    Log::error('❌ Bulk insert FAILED', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                        'attempted_records' => count($absensiRecords)
+                    ]);
                     throw $e;
                 }
             }
