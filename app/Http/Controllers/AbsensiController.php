@@ -440,7 +440,7 @@ class AbsensiController extends Controller
             return (object) [
                 'id' => 'employee_' . $employee->id,
                 'nama' => $employee->nama,
-                'jabatan' => $employee->jabatan,
+                'jabatan' => $employee->jabatan ?? 'karyawan',  // Safe access
                 'gaji_pokok' => $employee->gaji_pokok,
                 'source' => 'employee',
                 'lokasi' => $employee->lokasi,
@@ -587,7 +587,7 @@ class AbsensiController extends Controller
             return (object) [
                 'id' => 'employee_' . $employee->id,
                 'nama' => $employee->nama,
-                'jabatan' => $employee->jabatan,
+                'jabatan' => $employee->jabatan ?? 'karyawan',  // Safe access
                 'gaji_pokok' => $employee->gaji_pokok,
                 'source' => 'employee'
             ];
@@ -686,7 +686,9 @@ class AbsensiController extends Controller
         }
 
         // Admin cannot create absensi for mandor employees
-        if ($this->getCurrentUser()?->isAdmin() && $employee->jabatan === 'mandor') {
+        // Safe check: use null coalescing to avoid errors
+        $jabatan = $employee->jabatan ?? '';
+        if ($this->getCurrentUser()?->isAdmin() && $jabatan === 'mandor') {
             return response()->json([
                 'success' => false,
                 'message' => 'Admin tidak dapat membuat absensi untuk karyawan mandor.'
@@ -902,7 +904,7 @@ class AbsensiController extends Controller
             $actualEmployeeId = str_replace('employee_', '', $employeeId);
             $employee = Employee::find($actualEmployeeId);
             if ($employee) {
-                $employeeRole = $employee->jabatan;
+                $employeeRole = $employee->jabatan ?? 'karyawan';  // Safe access
                 $employeeName = $employee->nama;
             }
         } elseif (str_starts_with($employeeId, 'gudang_')) {
@@ -1396,7 +1398,7 @@ class AbsensiController extends Controller
                     'records' => array_map(function($record) {
                         return [
                             'nama' => $record['nama_karyawan'],
-                            'jabatan' => $record['jabatan'],
+                            // 'jabatan' => $record['jabatan'] ?? '-',  // ⚠️ Disabled: column doesn't exist yet
                             'tanggal' => $record['tanggal'],
                             'status' => $record['status'],
                             'pembibitan_id' => $record['pembibitan_id'],
