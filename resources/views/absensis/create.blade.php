@@ -1,626 +1,781 @@
-@extends('layouts.tailwind')
+@extends('layouts.app')
 
 @section('title', 'Tambah Absensi')
 
 @push('styles')
-<!-- Force reload CSS - CACHE DISABLED -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
-<link rel="stylesheet" href="https://cdn.tailwindcss.com?v={{ time() }}">
-<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js?v={{ time() }}" defer></script>
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+<!-- Flatpickr CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">
+
 <style>
-    /* 🚨 VERSI BARU INDICATOR - JIKA ANDA LIHAT INI = UPDATE BERHASIL */
-    .version-indicator {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    :root {
+        --primary-color: #16a34a;
+        --primary-hover: #15803d;
+        --bg-light: #f1f5f9;
+        --text-dark: #1e293b;
+        --border-color: #e2e8f0;
+    }
+
+    body {
+        background-color: var(--bg-light);
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        overflow: hidden;
+    }
+
+    .form-header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, #15803d 100%);
         color: white;
-        text-align: center;
+        padding: 24px 32px;
+        border-bottom: 4px solid #15803d;
+    }
+
+    .form-body {
+        padding: 32px;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: var(--text-dark);
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .form-control:focus,
+    .select2-container--bootstrap-5 .select2-selection:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.25rem rgba(22, 163, 74, 0.25);
+    }
+
+    .btn-primary {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+        padding: 12px 24px;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.3s;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-hover);
+        border-color: var(--primary-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+    }
+
+    .employee-table {
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+    }
+
+    .employee-table thead {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .employee-table th {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 12px;
+        padding: 16px 12px;
+        border: none;
+    }
+
+    .employee-table td {
         padding: 12px;
-        font-weight: bold;
-        font-size: 16px;
-        z-index: 99999;
-        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
-        animation: slideDown 0.5s ease-out;
+        vertical-align: middle;
     }
-    @keyframes slideDown {
-        from { transform: translateY(-100%); }
-        to { transform: translateY(0); }
+
+    .employee-table tbody tr:hover {
+        background-color: rgba(22, 163, 74, 0.05);
     }
-    .main-content {
-        margin-top: 50px !important;
+
+    .role-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .role-gudang { background: #dbeafe; color: #1e40af; }
+    .role-kandang { background: #fce7f3; color: #be185d; }
+    .role-mandor { background: #fef3c7; color: #92400e; }
+    .role-pembibitan { background: #d1fae5; color: #065f46; }
+
+    .summary-card {
+        border-radius: 12px;
+        padding: 20px;
+        border-left: 4px solid;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .summary-primary {
+        background: #ecfdf5;
+        border-left-color: #10b981;
+    }
+
+    .summary-secondary {
+        background: #eff6ff;
+        border-left-color: #3b82f6;
+    }
+
+    .summary-warning {
+        background: #fef3c7;
+        border-left-color: #f59e0b;
+    }
+
+    .role-divider {
+        background: var(--bg-light);
+        font-weight: 700;
+        color: var(--primary-color);
+        text-transform: uppercase;
+        font-size: 13px;
+        letter-spacing: 0.5px;
+    }
+
+    .select2-container--bootstrap-5 .select2-selection {
+        border-radius: 8px;
+        border: 2px solid var(--border-color);
+        min-height: 45px;
+    }
+
+    .flatpickr-input {
+        border-radius: 8px;
+        border: 2px solid var(--border-color);
+        padding: 12px 16px;
+    }
+
+    .status-select {
+        border-radius: 8px;
+        border: 2px solid var(--border-color);
+        padding: 8px 12px;
+        font-weight: 500;
+    }
+
+    .status-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.25rem rgba(22, 163, 74, 0.25);
+    }
+
+    .gaji-amount {
+        font-weight: 700;
+        font-size: 15px;
+    }
+
+    .gaji-full { color: #059669; }
+    .gaji-half { color: #d97706; }
+    .gaji-off { color: #dc2626; }
+
+    .empty-state {
+        padding: 60px 20px;
+        text-align: center;
+        color: #94a3b8;
+    }
+
+    .empty-state svg {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    @media (max-width: 768px) {
+        .form-header {
+            padding: 20px;
+        }
+        .form-body {
+            padding: 20px;
+        }
+        .employee-table {
+            font-size: 13px;
+        }
+        .employee-table th,
+        .employee-table td {
+            padding: 8px 6px;
+        }
     }
 </style>
 @endpush
 
 @section('content')
-<!-- 🟢 VERSION INDICATOR - DO NOT REMOVE -->
-<div class="version-indicator">
-    🎉 FORM BARU BERHASIL DIMUAT! Versi: {{ date('Y-m-d H:i:s') }} - Powered by Tailwind CSS + Alpine.js
-</div>
-
-<div class="main-content min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <!-- Header -->
-        <div class="mb-8">
-            <div class="flex items-center justify-between">
-                <div>
-                    <a href="{{ route(auth()->user()->isManager() ? 'manager.absensis.index' : 'admin.absensis.index') }}"
-                       class="inline-flex items-center text-sm text-gray-600 hover:text-blue-600 transition-colors mb-2">
-                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-                        </svg>
-                        Kembali
-                    </a>
-                    <h1 class="text-3xl font-bold text-gray-900">✨ Tambah Absensi (NEW)</h1>
-                    <p class="text-gray-600 mt-1">Pilih tanggal dan catat kehadiran karyawan</p>
-                </div>
-                <div class="text-right">
-                    <div class="text-sm text-gray-500">Hari Ini</div>
-                    <div class="text-lg font-semibold text-gray-900" x-data x-text="new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })"></div>
-                </div>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-11">
+            <!-- Back Button -->
+            <div class="mb-3">
+                <a href="{{ route(auth()->user()->isManager() ? 'manager.absensis.index' : 'admin.absensis.index') }}"
+                   class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Kembali
+                </a>
             </div>
-        </div>
 
-        <!-- Main Form Card -->
-        <div class="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
-             x-data="absensiForm()"
-             x-init="init()">
-
-            <!-- Card Header -->
-            <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-6">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="bg-white/20 backdrop-blur-sm rounded-lg p-2">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
-                            </svg>
-                        </div>
+            <!-- Main Form Card -->
+            <div class="form-card">
+                <!-- Header -->
+                <div class="form-header">
+                    <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <h2 class="text-xl font-bold text-white">Form Absensi Karyawan</h2>
-                            <p class="text-blue-100 text-sm">Catat kehadiran harian dengan cepat dan akurat</p>
+                            <h3 class="mb-1">
+                                <i class="bi bi-clipboard-check me-2"></i>
+                                Tambah Absensi Karyawan
+                            </h3>
+                            <p class="mb-0 opacity-90" style="font-size: 14px;">
+                                Catat kehadiran karyawan dengan cepat dan akurat
+                            </p>
+                        </div>
+                        <div class="text-end">
+                            <div class="badge bg-white text-primary" style="font-size: 13px; padding: 8px 12px;">
+                                <i class="bi bi-people-fill me-1"></i>
+                                <span id="totalEmployees">0</span> Karyawan
+                            </div>
                         </div>
                     </div>
-                    <div class="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
-                        <div class="text-xs text-blue-100">Total Karyawan</div>
-                        <div class="text-2xl font-bold text-white" x-text="employees.length"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Form Body -->
-            <div class="p-8 space-y-6">
-                <!-- Tanggal Input -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        📅 Tanggal Absensi
-                        <span class="text-red-500">*</span>
-                    </label>
-                    <input type="date"
-                           x-model="tanggal"
-                           :max="new Date().toISOString().split('T')[0]"
-                           required
-                           class="w-full md:w-96 px-4 py-3 text-gray-900 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all font-medium"
-                           :class="errors.tanggal ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : ''">
-                    <p x-show="errors.tanggal" x-text="errors.tanggal" class="text-red-600 text-sm mt-1.5 font-medium" x-cloak></p>
                 </div>
 
-                <!-- Search Bar -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        🔍 Cari Karyawan
-                    </label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
+                <!-- Form Body -->
+                <div class="form-body">
+                    <form id="absensiForm" method="POST" action="{{ route(auth()->user()->isManager() ? 'manager.absensis.bulk-store' : 'admin.absensis.bulk-store') }}">
+                        @csrf
+
+                        <!-- Tanggal Absensi -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">
+                                    <i class="bi bi-calendar3 text-primary me-1"></i>
+                                    Tanggal Absensi <span class="text-danger">*</span>
+                                </label>
+                                <input type="text"
+                                       id="tanggalAbsensi"
+                                       name="tanggal"
+                                       class="form-control flatpickr-input"
+                                       placeholder="Pilih tanggal..."
+                                       required
+                                       readonly>
+                                <small class="text-muted">Format: Hari, DD Bulan YYYY</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">
+                                    <i class="bi bi-funnel text-primary me-1"></i>
+                                    Filter Berdasarkan Role
+                                </label>
+                                <select id="roleFilter" class="form-select" style="border-radius: 8px; padding: 12px;">
+                                    <option value="all">Semua Role</option>
+                                    <option value="karyawan_gudang">Karyawan Gudang</option>
+                                    <option value="karyawan">Karyawan Kandang</option>
+                                    <option value="mandor">Mandor</option>
+                                </select>
+                            </div>
                         </div>
-                        <input type="text"
-                               x-model="searchQuery"
-                               @input="filterEmployees()"
-                               placeholder="Ketik nama karyawan untuk mencari..."
-                               class="w-full pl-12 pr-12 py-3.5 border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all text-gray-900 placeholder-gray-400">
-                        <div x-show="searchQuery"
-                             @click="clearSearch()"
-                             class="absolute inset-y-0 right-0 pr-4 flex items-center cursor-pointer group">
-                            <svg class="h-5 w-5 text-gray-400 group-hover:text-gray-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                            </svg>
+
+                        <!-- Pilih Karyawan -->
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class="bi bi-search text-primary me-1"></i>
+                                Cari dan Pilih Karyawan <span class="text-danger">*</span>
+                            </label>
+                            <select id="employeeSelect"
+                                    class="form-select"
+                                    multiple
+                                    data-placeholder="Cari karyawan berdasarkan nama atau role...">
+                                <!-- Options will be loaded via AJAX -->
+                            </select>
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Ketik nama karyawan atau pilih dari daftar. Tekan Ctrl untuk memilih beberapa karyawan sekaligus.
+                            </small>
                         </div>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1.5" x-show="searchQuery" x-cloak>
-                        Menampilkan <span class="font-semibold text-blue-600" x-text="filteredEmployees.length"></span> dari <span x-text="employees.length"></span> karyawan
-                    </p>
-                </div>
 
-                <!-- Filter Buttons -->
-                <div class="flex flex-wrap gap-2 items-center">
-                    <span class="text-sm font-semibold text-gray-700">Filter Cepat:</span>
-                    <button @click="setFilter('all')"
-                            :class="filterBy === 'all' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-                            class="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:scale-105">
-                        Semua (<span x-text="employees.length"></span>)
-                    </button>
-                    <button @click="setFilter('karyawan_gudang')"
-                            :class="filterBy === 'karyawan_gudang' ? 'bg-green-600 text-white shadow-lg shadow-green-500/30' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-                            class="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:scale-105">
-                        🏪 Karyawan Gudang (<span x-text="employees.filter(e => e.jabatan === 'karyawan_gudang').length"></span>)
-                    </button>
-                    <button @click="setFilter('karyawan')"
-                            :class="filterBy === 'karyawan' ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-                            class="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:scale-105">
-                        🏠 Karyawan Kandang (<span x-text="employees.filter(e => e.jabatan === 'karyawan').length"></span>)
-                    </button>
-                    <button @click="setFilter('mandor')"
-                            :class="filterBy === 'mandor' ? 'bg-orange-600 text-white shadow-lg shadow-orange-500/30' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'"
-                            class="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:scale-105">
-                        👷 Mandor (<span x-text="employees.filter(e => e.jabatan === 'mandor').length"></span>)
-                    </button>
-                </div>
-
-                <!-- Table -->
-                <div class="border-2 border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                    <div class="overflow-x-auto" style="max-height: 500px;">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50 sticky top-0 z-10">
-                                <tr>
-                                    <th class="px-4 py-4 text-left">
-                                        <input type="checkbox"
-                                               @change="toggleAll($event.target.checked)"
-                                               :checked="selectedEmployees.length === filteredEmployees.length && filteredEmployees.length > 0"
-                                               class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer">
-                                    </th>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Nama Karyawan</th>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Tipe</th>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Lokasi</th>
-                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Kandang</th>
-                                    <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Gaji Pokok</th>
-                                    <th class="px-6 py-4 text-center text-xs font-bold text-gray-700 uppercase tracking-wider">Status Kehadiran</th>
-                                    <th class="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Gaji Hari Ini</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <template x-for="employee in filteredEmployees" :key="employee.id">
-                                    <tr class="hover:bg-blue-50/50 transition-colors"
-                                        :class="selectedEmployees.includes(employee.id) ? 'bg-blue-50' : ''">
-                                        <td class="px-4 py-4">
-                                            <input type="checkbox"
-                                                   :checked="selectedEmployees.includes(employee.id)"
-                                                   @change="toggleEmployee(employee.id, $event.target.checked)"
-                                                   class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer">
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="font-semibold text-gray-900" x-text="employee.nama"></div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full"
-                                                  :class="{
-                                                      'bg-green-100 text-green-800': employee.jabatan === 'karyawan_gudang',
-                                                      'bg-purple-100 text-purple-800': employee.jabatan === 'karyawan',
-                                                      'bg-orange-100 text-orange-800': employee.jabatan === 'mandor'
-                                                  }"
-                                                  x-text="formatJabatan(employee.jabatan)">
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                            <span x-text="employee.lokasi?.nama_lokasi || '-'"></span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                            <span x-text="employee.kandang?.nama_kandang || '-'"></span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right">
-                                            <span class="text-sm font-bold text-gray-900" x-text="formatRupiah(employee.gaji_pokok)"></span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <select x-model="employeeStatus[employee.id]"
-                                                    @change="calculateGaji(employee.id)"
-                                                    :disabled="!selectedEmployees.includes(employee.id)"
-                                                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
-                                                    :class="!selectedEmployees.includes(employee.id) ? 'bg-gray-100 cursor-not-allowed opacity-60' : 'bg-white'">
-                                                <option value="">Pilih Status</option>
-                                                <option value="full">✓ Full Day</option>
-                                                <option value="setengah_hari">⚡ Half Day</option>
-                                                <option value="off">✗ Off</option>
-                                            </select>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right">
-                                            <span class="text-sm font-bold transition-colors"
-                                                  :class="{
-                                                      'text-green-600': employeeStatus[employee.id] === 'full',
-                                                      'text-yellow-600': employeeStatus[employee.id] === 'setengah_hari',
-                                                      'text-red-600': employeeStatus[employee.id] === 'off',
-                                                      'text-gray-400': !employeeStatus[employee.id]
-                                                  }"
-                                                  x-text="formatRupiah(getGajiHariIni(employee.id, employee.gaji_pokok))">
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </template>
-                                <tr x-show="filteredEmployees.length === 0">
-                                    <td colspan="8" class="px-6 py-16 text-center">
-                                        <div class="flex flex-col items-center justify-center text-gray-400">
-                                            <svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                            </svg>
-                                            <p class="text-lg font-medium text-gray-500">Tidak ada karyawan ditemukan</p>
-                                            <p class="text-sm text-gray-400 mt-1">Coba ubah filter atau kata kunci pencarian</p>
+                        <!-- Summary Cards -->
+                        <div class="row g-3 mb-4" id="summaryCards" style="display: none;">
+                            <div class="col-md-4">
+                                <div class="summary-card summary-primary">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <small class="text-muted d-block mb-1">Karyawan Dipilih</small>
+                                            <h4 class="mb-0" id="selectedCount">0</h4>
                                         </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Summary Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200 shadow-sm">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div class="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-1">Karyawan Dipilih</div>
-                                <div class="text-3xl font-bold text-blue-900" x-text="selectedEmployees.length"></div>
+                                        <i class="bi bi-people-fill text-success" style="font-size: 32px; opacity: 0.3;"></i>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="bg-blue-500 rounded-full p-3">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                </svg>
+                            <div class="col-md-4">
+                                <div class="summary-card summary-secondary">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <small class="text-muted d-block mb-1">Total Gaji Pokok</small>
+                                            <h5 class="mb-0" id="totalGajiPokok">Rp 0</h5>
+                                        </div>
+                                        <i class="bi bi-cash-stack text-primary" style="font-size: 32px; opacity: 0.3;"></i>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200 shadow-sm">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div class="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Total Gaji Pokok</div>
-                                <div class="text-2xl font-bold text-green-900" x-text="formatRupiah(totalGajiPokok())"></div>
-                            </div>
-                            <div class="bg-green-500 rounded-full p-3">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
+                            <div class="col-md-4">
+                                <div class="summary-card summary-warning">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <small class="text-muted d-block mb-1">Gaji Hari Ini</small>
+                                            <h5 class="mb-0" id="totalGajiHariIni">Rp 0</h5>
+                                        </div>
+                                        <i class="bi bi-wallet2 text-warning" style="font-size: 32px; opacity: 0.3;"></i>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200 shadow-sm">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div class="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-1">Total Gaji Hari Ini</div>
-                                <div class="text-2xl font-bold text-purple-900" x-text="formatRupiah(totalGajiHariIni())"></div>
-                            </div>
-                            <div class="bg-purple-500 rounded-full p-3">
-                                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 8h6m-5 0a3 3 0 110 6H9l3 3m-3-6h6m6 1a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
+                        <!-- Employee Table -->
+                        <div id="employeeTableContainer" style="display: none;">
+                            <div class="table-responsive">
+                                <table class="table employee-table mb-4">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 5%;">No</th>
+                                            <th style="width: 25%;">Nama Karyawan</th>
+                                            <th style="width: 15%;">Role</th>
+                                            <th style="width: 15%;" class="text-end">Gaji Pokok</th>
+                                            <th style="width: 20%;">Status Kehadiran</th>
+                                            <th style="width: 15%;" class="text-end">Gaji Hari Ini</th>
+                                            <th style="width: 5%;" class="text-center">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="employeeTableBody">
+                                        <!-- Rows will be added here dynamically -->
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Action Buttons -->
-                <div class="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <a href="{{ route(auth()->user()->isManager() ? 'manager.absensis.index' : 'admin.absensis.index') }}"
-                       class="inline-flex items-center px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all hover:scale-105">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                        Batal
-                    </a>
+                        <!-- Empty State -->
+                        <div id="emptyState" class="empty-state">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            <h5 class="mb-2">Belum Ada Karyawan Dipilih</h5>
+                            <p class="mb-0">Gunakan kolom pencarian di atas untuk memilih karyawan</p>
+                        </div>
 
-                    <button @click="submitForm()"
-                            :disabled="!canSubmit()"
-                            :class="canSubmit() ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/50 hover:shadow-xl hover:shadow-blue-500/50 hover:scale-105' : 'bg-gray-300 text-gray-500 cursor-not-allowed'"
-                            class="inline-flex items-center px-8 py-3 font-bold rounded-xl transition-all">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-show="!loading">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                        <svg class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" x-show="loading" x-cloak>
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span x-text="loading ? 'Menyimpan...' : '💾 Simpan Absensi'"></span>
-                    </button>
+                        <!-- Action Buttons -->
+                        <div class="d-flex justify-content-between align-items-center pt-4 border-top" id="actionButtons" style="display: none !important;">
+                            <button type="button" class="btn btn-outline-danger" id="clearAllBtn">
+                                <i class="bi bi-x-circle me-1"></i>
+                                Hapus Semua
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                                <i class="bi bi-save me-2"></i>
+                                Simpan Absensi (<span id="submitCount">0</span> Karyawan)
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<!-- Alpine.js Script -->
-<script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('absensiForm', () => ({
-            // Data
-            tanggal: new Date().toISOString().split('T')[0],
-            employees: @json($allEmployees ?? []),
-            filteredEmployees: [],
-            selectedEmployees: [],
-            employeeStatus: {},
-            employeeGaji: {},
-            searchQuery: '',
-            filterBy: 'all',
-            loading: false,
-            errors: {},
-
-            // Initialize
-            init() {
-                this.filteredEmployees = this.employees;
-                console.log('✅ Form Tailwind Loaded -', this.employees.length, 'employees');
-
-                // Debug: Check if employees have gaji_pokok
-                if (this.employees.length > 0) {
-                    const sample = this.employees[0];
-                    console.log('📊 Sample employee:', {
-                        id: sample.id,
-                        nama: sample.nama,
-                        jabatan: sample.jabatan,
-                        gaji_pokok: sample.gaji_pokok
-                    });
-                }
-            },
-
-            // Filter employees
-            filterEmployees() {
-                let filtered = this.employees;
-
-                // Filter by type
-                if (this.filterBy !== 'all') {
-                    filtered = filtered.filter(e => e.jabatan === this.filterBy);
-                }
-
-                // Filter by search query
-                if (this.searchQuery) {
-                    const query = this.searchQuery.toLowerCase();
-                    filtered = filtered.filter(e =>
-                        e.nama.toLowerCase().includes(query) ||
-                        (e.lokasi?.nama_lokasi || '').toLowerCase().includes(query) ||
-                        (e.kandang?.nama_kandang || '').toLowerCase().includes(query)
-                    );
-                }
-
-                this.filteredEmployees = filtered;
-            },
-
-            // Set filter and apply
-            setFilter(type) {
-                this.filterBy = type;
-                this.filterEmployees();
-            },
-
-            // Clear search
-            clearSearch() {
-                this.searchQuery = '';
-                this.filterEmployees();
-            },
-
-            // Toggle single employee
-            toggleEmployee(id, checked) {
-                if (checked) {
-                    if (!this.selectedEmployees.includes(id)) {
-                        this.selectedEmployees.push(id);
-                    }
-                    // Set default status to full and calculate immediately
-                    this.employeeStatus = {
-                        ...this.employeeStatus,
-                        [id]: 'full'
-                    };
-                    this.calculateGaji(id);
-                    console.log('✅ Employee selected:', id);
-                } else {
-                    this.selectedEmployees = this.selectedEmployees.filter(empId => empId !== id);
-                    // Remove from status and gaji (force reactivity)
-                    const newStatus = { ...this.employeeStatus };
-                    const newGaji = { ...this.employeeGaji };
-                    delete newStatus[id];
-                    delete newGaji[id];
-                    this.employeeStatus = newStatus;
-                    this.employeeGaji = newGaji;
-                    console.log('❌ Employee deselected:', id);
-                }
-            },
-
-            // Toggle all employees
-            toggleAll(checked) {
-                if (checked) {
-                    const newStatus = { ...this.employeeStatus };
-                    const newGaji = { ...this.employeeGaji };
-
-                    this.filteredEmployees.forEach(emp => {
-                        if (!this.selectedEmployees.includes(emp.id)) {
-                            this.selectedEmployees.push(emp.id);
-                        }
-                        newStatus[emp.id] = 'full';
-
-                        // Calculate gaji manually here
-                        const gajiPokok = emp.gaji_pokok || 0;
-                        newGaji[emp.id] = gajiPokok / 30;
-                    });
-
-                    this.employeeStatus = newStatus;
-                    this.employeeGaji = newGaji;
-                    console.log('✅ All employees selected:', this.filteredEmployees.length);
-                } else {
-                    const newStatus = { ...this.employeeStatus };
-                    const newGaji = { ...this.employeeGaji };
-
-                    this.filteredEmployees.forEach(emp => {
-                        this.selectedEmployees = this.selectedEmployees.filter(id => id !== emp.id);
-                        delete newStatus[emp.id];
-                        delete newGaji[emp.id];
-                    });
-
-                    this.employeeStatus = newStatus;
-                    this.employeeGaji = newGaji;
-                    console.log('❌ All employees deselected');
-                }
-            },
-
-            // Calculate gaji
-            calculateGaji(employeeId) {
-                const employee = this.employees.find(e => e.id === employeeId);
-                if (!employee) {
-                    console.error('❌ Employee not found:', employeeId);
-                    return;
-                }
-
-                const status = this.employeeStatus[employeeId];
-                const gajiPokok = employee.gaji_pokok || 0;
-
-                let calculatedGaji = 0;
-                if (status === 'full') {
-                    calculatedGaji = gajiPokok / 30;
-                } else if (status === 'setengah_hari') {
-                    calculatedGaji = gajiPokok / 60;
-                } else if (status === 'off') {
-                    calculatedGaji = 0;
-                }
-
-                // Force reactivity by creating new object reference
-                this.employeeGaji = {
-                    ...this.employeeGaji,
-                    [employeeId]: calculatedGaji
-                };
-
-                console.log('💰 Gaji calculated:', {
-                    employeeId,
-                    nama: employee.nama,
-                    status,
-                    gajiPokok,
-                    gajiHariIni: calculatedGaji
-                });
-            },
-
-            // Get gaji hari ini (computed on-the-fly for better reactivity)
-            getGajiHariIni(employeeId, gajiPokok) {
-                const status = this.employeeStatus[employeeId];
-                if (!status) return 0;
-
-                gajiPokok = gajiPokok || 0;
-
-                if (status === 'full') {
-                    return gajiPokok / 30;
-                } else if (status === 'setengah_hari') {
-                    return gajiPokok / 60;
-                } else if (status === 'off') {
-                    return 0;
-                }
-                return 0;
-            },
-
-            // Format rupiah
-            formatRupiah(amount) {
-                return new Intl.NumberFormat('id-ID', {
-                    style: 'currency',
-                    currency: 'IDR',
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0
-                }).format(amount || 0);
-            },
-
-            // Format jabatan
-            formatJabatan(jabatan) {
-                const mapping = {
-                    'karyawan_gudang': 'Karyawan Gudang',
-                    'karyawan': 'Karyawan Kandang',
-                    'mandor': 'Mandor'
-                };
-                return mapping[jabatan] || jabatan;
-            },
-
-            // Calculate totals
-            totalGajiPokok() {
-                return this.selectedEmployees.reduce((total, id) => {
-                    const emp = this.employees.find(e => e.id === id);
-                    return total + (emp?.gaji_pokok || 0);
-                }, 0);
-            },
-
-            totalGajiHariIni() {
-                return this.selectedEmployees.reduce((total, id) => {
-                    const emp = this.employees.find(e => e.id === id);
-                    if (!emp) return total;
-                    return total + this.getGajiHariIni(id, emp.gaji_pokok);
-                }, 0);
-            },
-
-            // Validation
-            canSubmit() {
-                return this.tanggal &&
-                       this.selectedEmployees.length > 0 &&
-                       this.selectedEmployees.every(id => this.employeeStatus[id]) &&
-                       !this.loading;
-            },
-
-            // Submit form
-            async submitForm() {
-                if (!this.canSubmit()) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Peringatan!',
-                        text: 'Mohon lengkapi semua data sebelum menyimpan',
-                        confirmButtonColor: '#3B82F6'
-                    });
-                    return;
-                }
-
-                this.loading = true;
-                this.errors = {};
-
-                const employeesData = this.selectedEmployees.map(id => ({
-                    id: id,
-                    status: this.employeeStatus[id],
-                    pembibitan_id: null
-                }));
-
-                try {
-                    const response = await fetch('{{ route(auth()->user()->isManager() ? "manager.absensis.bulk-store" : "admin.absensis.bulk-store") }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            tanggal: this.tanggal,
-                            employees: employeesData
-                        })
-                    });
-
-                    const result = await response.json();
-
-                    if (response.ok && result.success) {
-                        await Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            text: result.message || `Berhasil menyimpan ${employeesData.length} absensi karyawan`,
-                            confirmButtonColor: '#22C55E',
-                            timer: 2000
-                        });
-                        window.location.href = '{{ route(auth()->user()->isManager() ? "manager.absensis.index" : "admin.absensis.index") }}';
-                    } else {
-                        throw new Error(result.message || 'Terjadi kesalahan');
-                    }
-                } catch (error) {
-                    console.error('❌ Error:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal!',
-                        text: error.message || 'Terjadi kesalahan saat menyimpan data',
-                        confirmButtonColor: '#EF4444'
-                    });
-                } finally {
-                    this.loading = false;
-                }
-            }
-        }));
-    });
-</script>
-
-<style>
-    [x-cloak] { display: none !important; }
-</style>
 @endsection
+
+@push('scripts')
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<!-- Flatpickr JS -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
+
+<script>
+$(document).ready(function() {
+    // Store selected employees data
+    let selectedEmployees = [];
+    let allEmployeesData = [];
+
+    // Initialize Flatpickr
+    flatpickr("#tanggalAbsensi", {
+        locale: "id",
+        dateFormat: "Y-m-d",
+        defaultDate: new Date(),
+        altInput: true,
+        altFormat: "l, d F Y", // Format: Senin, 09 November 2025
+        maxDate: new Date(),
+        onChange: function(selectedDates, dateStr, instance) {
+            console.log('Tanggal dipilih:', dateStr);
+        }
+    });
+
+    // Initialize Select2
+    $('#employeeSelect').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Cari karyawan berdasarkan nama atau role...',
+        allowClear: true,
+        closeOnSelect: false,
+        ajax: {
+            url: '{{ route(auth()->user()->isManager() ? "manager.absensis.get-employees" : "admin.absensis.get-employees") }}',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return {
+                    search: params.term,
+                    role: $('#roleFilter').val()
+                };
+            },
+            processResults: function (data) {
+                allEmployeesData = data.employees || [];
+
+                // Group by role
+                const grouped = {};
+                data.employees.forEach(emp => {
+                    const role = emp.jabatan || 'other';
+                    if (!grouped[role]) {
+                        grouped[role] = [];
+                    }
+                    grouped[role].push({
+                        id: emp.id,
+                        text: emp.nama + ' - ' + formatJabatan(emp.jabatan),
+                        data: emp
+                    });
+                });
+
+                // Convert to Select2 format with groups
+                const results = [];
+                const roleLabels = {
+                    'karyawan_gudang': '🏪 Karyawan Gudang',
+                    'karyawan': '🏠 Karyawan Kandang',
+                    'mandor': '👷 Mandor'
+                };
+
+                Object.keys(grouped).forEach(role => {
+                    results.push({
+                        text: roleLabels[role] || role,
+                        children: grouped[role]
+                    });
+                });
+
+                return { results: results };
+            },
+            cache: true
+        }
+    });
+
+    // Handle employee selection
+    $('#employeeSelect').on('select2:select', function (e) {
+        const employeeData = e.params.data.data;
+        if (!selectedEmployees.find(emp => emp.id === employeeData.id)) {
+            selectedEmployees.push({
+                ...employeeData,
+                status: 'full' // Default status
+            });
+            updateTable();
+        }
+    });
+
+    // Handle employee removal from select
+    $('#employeeSelect').on('select2:unselect', function (e) {
+        const employeeId = e.params.data.id;
+        selectedEmployees = selectedEmployees.filter(emp => emp.id !== employeeId);
+        updateTable();
+    });
+
+    // Handle role filter change
+    $('#roleFilter').on('change', function() {
+        $('#employeeSelect').val(null).trigger('change');
+        selectedEmployees = [];
+        updateTable();
+    });
+
+    // Clear all button
+    $('#clearAllBtn').on('click', function() {
+        Swal.fire({
+            title: 'Hapus Semua?',
+            text: "Semua karyawan yang dipilih akan dihapus",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#16a34a',
+            cancelButtonColor: '#dc2626',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $('#employeeSelect').val(null).trigger('change');
+                selectedEmployees = [];
+                updateTable();
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: 'Semua karyawan dihapus',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            }
+        });
+    });
+
+    // Update table when data changes
+    function updateTable() {
+        const tbody = $('#employeeTableBody');
+        tbody.empty();
+
+        if (selectedEmployees.length === 0) {
+            $('#employeeTableContainer').hide();
+            $('#summaryCards').hide();
+            $('#actionButtons').hide();
+            $('#emptyState').show();
+            $('#submitBtn').prop('disabled', true);
+            return;
+        }
+
+        $('#emptyState').hide();
+        $('#employeeTableContainer').show();
+        $('#summaryCards').show();
+        $('#actionButtons').show();
+
+        // Group by role for display
+        const roleOrder = ['karyawan_gudang', 'karyawan', 'mandor'];
+        const groupedEmployees = {};
+
+        selectedEmployees.forEach(emp => {
+            const role = emp.jabatan || 'other';
+            if (!groupedEmployees[role]) {
+                groupedEmployees[role] = [];
+            }
+            groupedEmployees[role].push(emp);
+        });
+
+        let rowNumber = 1;
+        roleOrder.forEach(role => {
+            if (groupedEmployees[role] && groupedEmployees[role].length > 0) {
+                // Add role divider
+                const dividerRow = `
+                    <tr class="role-divider">
+                        <td colspan="7" style="padding: 12px;">
+                            <i class="bi bi-${getRoleIcon(role)} me-2"></i>
+                            ${formatJabatan(role)} (${groupedEmployees[role].length})
+                        </td>
+                    </tr>
+                `;
+                tbody.append(dividerRow);
+
+                // Add employees
+                groupedEmployees[role].forEach(emp => {
+                    const row = createEmployeeRow(emp, rowNumber);
+                    tbody.append(row);
+                    rowNumber++;
+                });
+            }
+        });
+
+        updateSummary();
+        validateForm();
+    }
+
+    // Create employee table row
+    function createEmployeeRow(emp, rowNumber) {
+        const gajiPokok = emp.gaji_pokok || 0;
+        const gajiHariIni = calculateGaji(gajiPokok, emp.status);
+
+        return `
+            <tr data-employee-id="${emp.id}">
+                <td>${rowNumber}</td>
+                <td>
+                    <strong>${emp.nama}</strong>
+                    ${emp.lokasi ? `<br><small class="text-muted">Lokasi: ${emp.lokasi.nama_lokasi || '-'}</small>` : ''}
+                </td>
+                <td>
+                    <span class="role-badge role-${emp.jabatan}">
+                        ${formatJabatan(emp.jabatan)}
+                    </span>
+                </td>
+                <td class="text-end">
+                    <strong>${formatRupiah(gajiPokok)}</strong>
+                </td>
+                <td>
+                    <select class="form-select status-select" data-employee-id="${emp.id}" onchange="updateEmployeeStatus('${emp.id}', this.value)">
+                        <option value="full" ${emp.status === 'full' ? 'selected' : ''}>✓ Full Day</option>
+                        <option value="setengah_hari" ${emp.status === 'setengah_hari' ? 'selected' : ''}>⚡ Half Day</option>
+                        <option value="off" ${emp.status === 'off' ? 'selected' : ''}>✗ Off</option>
+                    </select>
+                </td>
+                <td class="text-end">
+                    <span class="gaji-amount gaji-${emp.status === 'full' ? 'full' : emp.status === 'setengah_hari' ? 'half' : 'off'}" id="gaji-${emp.id}">
+                        ${formatRupiah(gajiHariIni)}
+                    </span>
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeEmployee('${emp.id}')" title="Hapus">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+
+    // Calculate gaji based on status
+    function calculateGaji(gajiPokok, status) {
+        if (status === 'full') {
+            return gajiPokok / 30;
+        } else if (status === 'setengah_hari') {
+            return (gajiPokok / 30) * 0.5;
+        } else {
+            return 0;
+        }
+    }
+
+    // Update employee status
+    window.updateEmployeeStatus = function(employeeId, newStatus) {
+        const emp = selectedEmployees.find(e => e.id === employeeId);
+        if (emp) {
+            emp.status = newStatus;
+            const gajiPokok = emp.gaji_pokok || 0;
+            const gajiHariIni = calculateGaji(gajiPokok, newStatus);
+
+            // Update gaji display
+            const gajiElement = $(`#gaji-${employeeId}`);
+            gajiElement.text(formatRupiah(gajiHariIni));
+            gajiElement.removeClass('gaji-full gaji-half gaji-off');
+            gajiElement.addClass(`gaji-${newStatus === 'full' ? 'full' : newStatus === 'setengah_hari' ? 'half' : 'off'}`);
+
+            updateSummary();
+        }
+    };
+
+    // Remove employee
+    window.removeEmployee = function(employeeId) {
+        selectedEmployees = selectedEmployees.filter(emp => emp.id !== employeeId);
+
+        // Also remove from select2
+        const selectedValues = $('#employeeSelect').val() || [];
+        const newValues = selectedValues.filter(val => val !== employeeId);
+        $('#employeeSelect').val(newValues).trigger('change');
+
+        updateTable();
+    };
+
+    // Update summary cards
+    function updateSummary() {
+        const totalSelected = selectedEmployees.length;
+        const totalGajiPokok = selectedEmployees.reduce((sum, emp) => sum + (emp.gaji_pokok || 0), 0);
+        const totalGajiHariIni = selectedEmployees.reduce((sum, emp) => {
+            return sum + calculateGaji(emp.gaji_pokok || 0, emp.status);
+        }, 0);
+
+        $('#selectedCount').text(totalSelected);
+        $('#totalEmployees').text(totalSelected);
+        $('#submitCount').text(totalSelected);
+        $('#totalGajiPokok').text(formatRupiah(totalGajiPokok));
+        $('#totalGajiHariIni').text(formatRupiah(totalGajiHariIni));
+    }
+
+    // Validate form
+    function validateForm() {
+        const isValid = selectedEmployees.length > 0 && $('#tanggalAbsensi').val();
+        $('#submitBtn').prop('disabled', !isValid);
+    }
+
+    // Format currency
+    function formatRupiah(amount) {
+        return new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(amount);
+    }
+
+    // Format jabatan
+    function formatJabatan(jabatan) {
+        const labels = {
+            'karyawan_gudang': 'Karyawan Gudang',
+            'karyawan': 'Karyawan Kandang',
+            'mandor': 'Mandor'
+        };
+        return labels[jabatan] || jabatan;
+    }
+
+    // Get role icon
+    function getRoleIcon(role) {
+        const icons = {
+            'karyawan_gudang': 'building',
+            'karyawan': 'house-door',
+            'mandor': 'person-badge'
+        };
+        return icons[role] || 'person';
+    }
+
+    // Form submission
+    $('#absensiForm').on('submit', function(e) {
+        e.preventDefault();
+
+        if (selectedEmployees.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Peringatan',
+                text: 'Pilih minimal 1 karyawan untuk melanjutkan',
+                confirmButtonColor: '#16a34a'
+            });
+            return;
+        }
+
+        const submitBtn = $('#submitBtn');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...');
+
+        const formData = {
+            tanggal: $('#tanggalAbsensi').val(),
+            employees: selectedEmployees.map(emp => ({
+                id: emp.id,
+                status: emp.status,
+                pembibitan_id: null
+            }))
+        };
+
+        $.ajax({
+            url: $(this).attr('action'),
+            method: 'POST',
+            data: JSON.stringify(formData),
+            contentType: 'application/json',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil!',
+                        text: response.message || `Berhasil menyimpan ${formData.employees.length} absensi karyawan`,
+                        confirmButtonColor: '#16a34a',
+                        timer: 2000
+                    }).then(() => {
+                        window.location.href = '{{ route(auth()->user()->isManager() ? "manager.absensis.index" : "admin.absensis.index") }}';
+                    });
+                } else {
+                    throw new Error(response.message || 'Gagal menyimpan data');
+                }
+            },
+            error: function(xhr) {
+                console.error('Error:', xhr);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal!',
+                    text: xhr.responseJSON?.message || 'Terjadi kesalahan saat menyimpan data',
+                    confirmButtonColor: '#dc2626'
+                });
+                submitBtn.prop('disabled', false).html(originalText);
+            }
+        });
+    });
+
+    console.log('✅ Absensi form initialized successfully');
+});
+</script>
+@endpush
