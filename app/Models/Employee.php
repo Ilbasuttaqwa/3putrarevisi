@@ -56,14 +56,24 @@ class Employee extends Model
 
     /**
      * Accessor untuk mendapatkan jabatan (sesuai ERD)
+     * FIXED: Safe access to avoid "Undefined array key" errors
      */
     public function getJabatanAttribute($value)
     {
-        // Auto-fill jabatan berdasarkan role
-        if (empty($value)) {
-            return $this->role ?? 'karyawan';
+        // Return value if exists
+        if (!empty($value)) {
+            return $value;
         }
-        return $value;
+
+        // Fallback: Try 'role' column (for databases before migration)
+        // Use attributes array to safely access without triggering accessor loop
+        $role = $this->attributes['role'] ?? null;
+        if (!empty($role)) {
+            return $role;
+        }
+
+        // Default fallback
+        return 'karyawan';
     }
 
     /**

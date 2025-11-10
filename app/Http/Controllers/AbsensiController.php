@@ -1246,7 +1246,9 @@ class AbsensiController extends Controller
                     }
 
                     // Admin cannot create absensi for mandor employees
-                    if ($this->getCurrentUser()?->isAdmin() && $employee->jabatan === 'mandor') {
+                    // Safe check: use null coalescing to avoid "Undefined array key" error
+                    $jabatan = $employee->jabatan ?? '';
+                    if ($this->getCurrentUser()?->isAdmin() && $jabatan === 'mandor') {
                         $errors[] = "Admin tidak dapat membuat absensi untuk {$employee->nama} (mandor)";
                         continue;
                     }
