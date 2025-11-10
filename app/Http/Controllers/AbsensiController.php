@@ -1209,8 +1209,7 @@ class AbsensiController extends Controller
                                 'nama' => $gudang->nama,
                                 'jabatan' => 'karyawan_gudang',
                                 'gaji_pokok' => $gudang->gaji,
-                                'lokasi_kerja' => 'Kantor Pusat',
-                                'kandang_id' => null
+                                'lokasi_kerja' => 'Kantor Pusat'
                             ];
                         }
                     } elseif (str_starts_with($employeeId, 'mandor_')) {
@@ -1223,8 +1222,7 @@ class AbsensiController extends Controller
                                 'nama' => $mandor->nama,
                                 'jabatan' => 'mandor',
                                 'gaji_pokok' => $mandor->gaji,
-                                'lokasi_kerja' => 'Kantor Pusat',
-                                'kandang_id' => null
+                                'lokasi_kerja' => 'Kantor Pusat'
                             ];
                         }
                     }
