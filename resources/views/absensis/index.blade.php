@@ -274,10 +274,12 @@ table.dataTable thead th.sorting_desc {
                         Transaksi Absensi
                     </h4>
                     <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-primary" onclick="showBulkAttendance()">
+                        <!-- Redirect to new Select2 form -->
+                        <a href="{{ route(auth()->user()->isManager() ? 'manager.absensis.create' : 'admin.absensis.create') }}"
+                           class="btn btn-primary">
                             <i class="bi bi-plus-circle me-1"></i>
                             Tambah Absensi
-                        </button>
+                        </a>
                         <button type="button" class="btn btn-danger" id="deleteSelectedBtn" onclick="deleteSelectedAbsensi()" disabled>
                             <i class="bi bi-trash me-1"></i>
                             Hapus
@@ -336,7 +338,13 @@ table.dataTable thead th.sorting_desc {
     </div>
 </div>
 
-<!-- Bulk Attendance Modal -->
+<!--
+    MODAL LAMA - TIDAK DIPAKAI LAGI
+    Sekarang menggunakan form baru di /create dengan Select2 + Flatpickr
+
+    Bulk Attendance Modal
+-->
+<!--
 <div class="modal fade" id="bulkAttendanceModal" tabindex="-1" aria-labelledby="bulkAttendanceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
@@ -501,6 +509,9 @@ table.dataTable thead th.sorting_desc {
         </div>
     </div>
 </div>
+-->
+<!-- END MODAL LAMA -->
+
 @endsection
 
 @push('scripts')
