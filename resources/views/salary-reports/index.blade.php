@@ -15,47 +15,50 @@
                 <p class="page-subtitle">Sistem laporan gaji terintegrasi dengan semua fitur</p>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="d-flex justify-content-end align-items-center mb-4">
-                <div>
-                    <a href="{{ route(auth()->user()->isAdmin() ? 'admin.salary-reports.export' : 'manager.salary-reports.export', array_merge(request()->query(), ['report_type' => 'biaya_gaji'])) }}" 
-                       class="btn btn-success" target="_blank">
-                        <i class="bi bi-file-earmark-excel"></i>
-                        Export Biaya Gaji
-                    </a>
-                    <a href="{{ route(auth()->user()->isAdmin() ? 'admin.salary-reports.export' : 'manager.salary-reports.export', array_merge(request()->query(), ['report_type' => 'rinci'])) }}" 
-                       class="btn btn-info" target="_blank">
-                        <i class="bi bi-file-earmark-text"></i>
-                        Export Rinci
-                    </a>
-                    <a href="{{ route(auth()->user()->isAdmin() ? 'admin.salary-reports.export' : 'manager.salary-reports.export', array_merge(request()->query(), ['report_type' => 'singkat'])) }}" 
-                       class="btn btn-warning" target="_blank">
-                        <i class="bi bi-file-earmark"></i>
-                        Export Singkat
-                    </a>
+            <!-- Action Buttons - Only show if there's data -->
+            @if($reports->count() > 0)
+                <div class="d-flex justify-content-end align-items-center mb-4">
+                    <div>
+                        <a href="{{ route(auth()->user()->isAdmin() ? 'admin.salary-reports.export' : 'manager.salary-reports.export', array_merge(request()->query(), ['report_type' => 'biaya_gaji'])) }}"
+                           class="btn btn-success" target="_blank">
+                            <i class="bi bi-file-earmark-excel"></i>
+                            Export Biaya Gaji
+                        </a>
+                        <a href="{{ route(auth()->user()->isAdmin() ? 'admin.salary-reports.export' : 'manager.salary-reports.export', array_merge(request()->query(), ['report_type' => 'rinci'])) }}"
+                           class="btn btn-info" target="_blank">
+                            <i class="bi bi-file-earmark-text"></i>
+                            Export Rinci
+                        </a>
+                        <a href="{{ route(auth()->user()->isAdmin() ? 'admin.salary-reports.export' : 'manager.salary-reports.export', array_merge(request()->query(), ['report_type' => 'singkat'])) }}"
+                           class="btn btn-warning" target="_blank">
+                            <i class="bi bi-file-earmark"></i>
+                            Export Singkat
+                        </a>
+                    </div>
                 </div>
-            </div>
+            @endif
 
             <!-- Filter Form -->
             <div class="card mb-4">
                 <div class="card-body">
                     <form method="GET" action="{{ route(auth()->user()->isAdmin() ? 'admin.salary-reports.index' : 'manager.salary-reports.index') }}" class="row g-3 filter-form">
                         <div class="col-md-2">
-                            <label for="tahun" class="form-label">Tahun</label>
-                            <input type="number" 
-                                   name="tahun" 
-                                   id="tahun" 
-                                   class="form-control" 
-                                   value="{{ $tahun }}" 
-                                   min="2020" 
+                            <label for="tahun" class="form-label">Tahun <span class="text-danger">*</span></label>
+                            <input type="number"
+                                   name="tahun"
+                                   id="tahun"
+                                   class="form-control"
+                                   value="{{ $tahun ?? date('Y') }}"
+                                   min="2020"
                                    max="2030"
-                                   placeholder="Tahun">
+                                   placeholder="Tahun"
+                                   required>
                         </div>
                         <div class="col-md-2">
-                            <label for="bulan" class="form-label">Bulan</label>
-                            <select name="bulan" id="bulan" class="form-select">
+                            <label for="bulan" class="form-label">Bulan <span class="text-danger">*</span></label>
+                            <select name="bulan" id="bulan" class="form-select" required>
                                 @foreach($availableMonths as $monthNum => $monthName)
-                                    <option value="{{ $monthNum }}" {{ $bulan == $monthNum ? 'selected' : '' }}>{{ $monthName }}</option>
+                                    <option value="{{ $monthNum }}" {{ ($bulan ?? date('n')) == $monthNum ? 'selected' : '' }}>{{ $monthName }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -194,9 +197,16 @@
                             </table>
                         </div>
                     @else
-                        <div class="alert alert-info text-center">
-                            <i class="bi bi-info-circle"></i>
-                            Tidak ada data laporan gaji untuk periode yang dipilih.
+                        <div class="alert alert-info text-center mb-0">
+                            <i class="bi bi-info-circle fs-3"></i>
+                            <h5 class="mt-2 mb-1">Belum Ada Data</h5>
+                            <p class="mb-0">
+                                @if(!$tahun || !$bulan)
+                                    Silakan pilih <strong>Tahun</strong> dan <strong>Bulan</strong>, lalu klik tombol <strong>Filter</strong> untuk menampilkan laporan gaji.
+                                @else
+                                    Tidak ada data laporan gaji untuk periode yang dipilih. Silakan pilih periode lain atau cek data absensi.
+                                @endif
+                            </p>
                         </div>
                     @endif
                 </div>

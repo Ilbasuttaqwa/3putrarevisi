@@ -28,18 +28,11 @@ class SalaryReportController extends Controller
         // Auto-sync logic (runs automatically, no manual intervention needed)
         AutoSyncService::syncSalaryReports();
         AutoSyncService::clearCacheIfNeeded();
-        
-        // Force generate if no reports exist for current month
-        $tahun = $request->get('tahun', Carbon::now()->year);
-        $bulan = $request->get('bulan', Carbon::now()->month);
-        
-        $existingReports = SalaryReport::where('tahun', $tahun)
-            ->where('bulan', $bulan)
-            ->count();
-            
-        if ($existingReports == 0) {
-            AutoSyncService::forceGenerateSalaryReports($tahun, $bulan);
-        }
+
+        // Get filter parameters - NO DEFAULT VALUES
+        // Data hanya muncul jika user submit form filter
+        $tahun = $request->get('tahun');
+        $bulan = $request->get('bulan');
         $tipe = $request->get('tipe', 'all');
         $lokasiId = $request->get('lokasi_id');
         $kandangId = $request->get('kandang_id');
@@ -47,59 +40,74 @@ class SalaryReportController extends Controller
         $tanggalMulai = $request->get('tanggal_mulai');
         $tanggalSelesai = $request->get('tanggal_selesai');
 
-        // Selalu tampilkan data berdasarkan periode yang dipilih
-        $query = SalaryReport::periode($tahun, $bulan)
-            ->tipeKaryawan($tipe)
-            ->tanggalRange($tanggalMulai, $tanggalSelesai);
+        // Initialize empty collections
+        $reports = collect();
+        $lokasis = collect();
+        $kandangs = collect();
+        $pembibitans = collect();
 
-        // Admin tidak boleh melihat mandor
-        if (auth()->user()->isAdmin()) {
-            $query->where('tipe_karyawan', '!=', 'mandor');
-        }
+        // Only load data if tahun and bulan are provided (user clicked Filter button)
+        if ($tahun && $bulan) {
+            // Force generate if no reports exist for selected period
+            $existingReports = SalaryReport::where('tahun', $tahun)
+                ->where('bulan', $bulan)
+                ->count();
 
-        // Filter berdasarkan pembibitan, lokasi, dan kandang
-        if ($pembibitanId) {
-            // Jika pembibitan dipilih, filter berdasarkan pembibitan tersebut
-            $query->where('pembibitan_id', $pembibitanId);
-        }
-        
-        if ($lokasiId) {
-            // Filter berdasarkan lokasi (melalui pembibitan atau langsung)
-            $query->where('lokasi_id', $lokasiId);
-        }
-        
-        if ($kandangId) {
-            // Filter berdasarkan kandang (melalui pembibitan atau langsung)
-            $query->where('kandang_id', $kandangId);
-        }
-            
-        $reports = $query->orderBy('nama_karyawan')->get();
+            if ($existingReports == 0) {
+                AutoSyncService::forceGenerateSalaryReports($tahun, $bulan);
+            }
 
-        // Get filter options - hanya yang memiliki data laporan gaji
-        $lokasis = Lokasi::whereIn('id', function($query) use ($tahun, $bulan) {
-            $query->select('lokasi_id')
-                  ->from('salary_reports')
-                  ->where('tahun', $tahun)
-                  ->where('bulan', $bulan)
-                  ->whereNotNull('lokasi_id');
-        })->orderBy('nama_lokasi')->get();
-        
-        $kandangs = Kandang::whereIn('id', function($query) use ($tahun, $bulan) {
-            $query->select('kandang_id')
-                  ->from('salary_reports')
-                  ->where('tahun', $tahun)
-                  ->where('bulan', $bulan)
-                  ->whereNotNull('kandang_id');
-        })->orderBy('nama_kandang')->get();
+            // Build query with filters
+            $query = SalaryReport::periode($tahun, $bulan)
+                ->tipeKaryawan($tipe)
+                ->tanggalRange($tanggalMulai, $tanggalSelesai);
 
-        // Tampilkan hanya pembibitan yang memiliki data laporan gaji
-        $pembibitans = Pembibitan::whereIn('id', function($query) use ($tahun, $bulan) {
-            $query->select('pembibitan_id')
-                  ->from('salary_reports')
-                  ->where('tahun', $tahun)
-                  ->where('bulan', $bulan)
-                  ->whereNotNull('pembibitan_id');
-        })->orderBy('judul')->get();
+            // Admin tidak boleh melihat mandor
+            if (auth()->user()->isAdmin()) {
+                $query->where('tipe_karyawan', '!=', 'mandor');
+            }
+
+            // Filter berdasarkan pembibitan, lokasi, dan kandang
+            if ($pembibitanId) {
+                $query->where('pembibitan_id', $pembibitanId);
+            }
+
+            if ($lokasiId) {
+                $query->where('lokasi_id', $lokasiId);
+            }
+
+            if ($kandangId) {
+                $query->where('kandang_id', $kandangId);
+            }
+
+            $reports = $query->orderBy('nama_karyawan')->get();
+
+            // Get filter options - hanya yang memiliki data laporan gaji untuk periode ini
+            $lokasis = Lokasi::whereIn('id', function($query) use ($tahun, $bulan) {
+                $query->select('lokasi_id')
+                      ->from('salary_reports')
+                      ->where('tahun', $tahun)
+                      ->where('bulan', $bulan)
+                      ->whereNotNull('lokasi_id');
+            })->orderBy('nama_lokasi')->get();
+
+            $kandangs = Kandang::whereIn('id', function($query) use ($tahun, $bulan) {
+                $query->select('kandang_id')
+                      ->from('salary_reports')
+                      ->where('tahun', $tahun)
+                      ->where('bulan', $bulan)
+                      ->whereNotNull('kandang_id');
+            })->orderBy('nama_kandang')->get();
+
+            // Tampilkan hanya pembibitan yang memiliki data laporan gaji
+            $pembibitans = Pembibitan::whereIn('id', function($query) use ($tahun, $bulan) {
+                $query->select('pembibitan_id')
+                      ->from('salary_reports')
+                      ->where('tahun', $tahun)
+                      ->where('bulan', $bulan)
+                      ->whereNotNull('pembibitan_id');
+            })->orderBy('judul')->get();
+        }
 
         $availableMonths = [
             1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
