@@ -341,12 +341,13 @@
                                     <thead>
                                         <tr>
                                             <th style="width: 5%;">No</th>
-                                            <th style="width: 25%;">Nama Karyawan</th>
-                                            <th style="width: 15%;">Role</th>
-                                            <th style="width: 15%;" class="text-end">Gaji Pokok</th>
-                                            <th style="width: 20%;">Status Kehadiran</th>
-                                            <th style="width: 15%;" class="text-end">Gaji Hari Ini</th>
-                                            <th style="width: 5%;" class="text-center">Aksi</th>
+                                            <th style="width: 20%;">Nama Karyawan</th>
+                                            <th style="width: 10%;">Role</th>
+                                            <th style="width: 12%;" class="text-end">Gaji Pokok</th>
+                                            <th style="width: 15%;">Status Kehadiran</th>
+                                            <th style="width: 18%;">Pembibitan</th>
+                                            <th style="width: 12%;" class="text-end">Gaji Hari Ini</th>
+                                            <th style="width: 8%;" class="text-center">Aksi</th>
                                         </tr>
                                     </thead>
                                     <tbody id="employeeTableBody">
@@ -397,6 +398,9 @@ $(document).ready(function() {
     // Store selected employees data
     let selectedEmployees = [];
     let allEmployeesData = [];
+    let allPembibitans = @json($pembibitans ?? []);
+
+    console.log('📋 Pembibitans loaded:', allPembibitans.length);
 
     // Initialize Flatpickr
     flatpickr("#tanggalAbsensi", {
@@ -472,7 +476,8 @@ $(document).ready(function() {
         if (!selectedEmployees.find(emp => emp.id === employeeData.id)) {
             selectedEmployees.push({
                 ...employeeData,
-                status: 'full' // Default status
+                status: 'full', // Default status
+                pembibitan_id: null // Default no pembibitan
             });
             updateTable();
         }
@@ -558,7 +563,7 @@ $(document).ready(function() {
                 // Add role divider
                 const dividerRow = `
                     <tr class="role-divider">
-                        <td colspan="7" style="padding: 12px;">
+                        <td colspan="8" style="padding: 12px;">
                             <i class="bi bi-${getRoleIcon(role)} me-2"></i>
                             ${formatJabatan(role)} (${groupedEmployees[role].length})
                         </td>
@@ -584,6 +589,15 @@ $(document).ready(function() {
         const gajiPokok = emp.gaji_pokok || 0;
         const gajiHariIni = calculateGaji(gajiPokok, emp.status);
 
+        // Generate pembibitan options
+        let pembibitanOptions = '<option value="">Pilih Pembibitan (Opsional)</option>';
+        allPembibitans.forEach(pembibitan => {
+            const lokasiInfo = pembibitan.lokasi ? pembibitan.lokasi.nama_lokasi : '-';
+            const kandangInfo = pembibitan.kandang ? pembibitan.kandang.nama_kandang : '-';
+            const selected = emp.pembibitan_id == pembibitan.id ? 'selected' : '';
+            pembibitanOptions += `<option value="${pembibitan.id}" ${selected}>${pembibitan.judul} (${lokasiInfo} - ${kandangInfo})</option>`;
+        });
+
         return `
             <tr data-employee-id="${emp.id}">
                 <td>${rowNumber}</td>
@@ -604,6 +618,11 @@ $(document).ready(function() {
                         <option value="full" ${emp.status === 'full' ? 'selected' : ''}>✓ Full Day</option>
                         <option value="setengah_hari" ${emp.status === 'setengah_hari' ? 'selected' : ''}>⚡ Half Day</option>
                         <option value="off" ${emp.status === 'off' ? 'selected' : ''}>✗ Off</option>
+                    </select>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm pembibitan-select" data-employee-id="${emp.id}" onchange="updateEmployeePembibitan('${emp.id}', this.value)" style="font-size: 13px;">
+                        ${pembibitanOptions}
                     </select>
                 </td>
                 <td class="text-end">
@@ -646,6 +665,15 @@ $(document).ready(function() {
             gajiElement.addClass(`gaji-${newStatus === 'full' ? 'full' : newStatus === 'setengah_hari' ? 'half' : 'off'}`);
 
             updateSummary();
+        }
+    };
+
+    // Update employee pembibitan
+    window.updateEmployeePembibitan = function(employeeId, pembibitanId) {
+        const emp = selectedEmployees.find(e => e.id === employeeId);
+        if (emp) {
+            emp.pembibitan_id = pembibitanId || null;
+            console.log(`📝 Pembibitan updated for ${emp.nama}:`, pembibitanId || 'None');
         }
     };
 
@@ -735,9 +763,11 @@ $(document).ready(function() {
             employees: selectedEmployees.map(emp => ({
                 id: emp.id,
                 status: emp.status,
-                pembibitan_id: null
+                pembibitan_id: emp.pembibitan_id || null
             }))
         };
+
+        console.log('📤 Submitting absensi data:', formData);
 
         $.ajax({
             url: $(this).attr('action'),
