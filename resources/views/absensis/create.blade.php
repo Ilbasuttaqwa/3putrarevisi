@@ -401,6 +401,11 @@ $(document).ready(function() {
     let allPembibitans = @json($pembibitans ?? []);
 
     console.log('📋 Pembibitans loaded:', allPembibitans.length);
+    console.log('📋 Pembibitans data:', allPembibitans);
+
+    if (allPembibitans.length === 0) {
+        console.warn('⚠️ WARNING: No pembibitans data found!');
+    }
 
     // Initialize Flatpickr
     flatpickr("#tanggalAbsensi", {
@@ -591,12 +596,16 @@ $(document).ready(function() {
 
         // Generate pembibitan options
         let pembibitanOptions = '<option value="">Pilih Pembibitan (Opsional)</option>';
+        console.log(`🔧 Creating row for ${emp.nama}, available pembibitans:`, allPembibitans.length);
+
         allPembibitans.forEach(pembibitan => {
             const lokasiInfo = pembibitan.lokasi ? pembibitan.lokasi.nama_lokasi : '-';
             const kandangInfo = pembibitan.kandang ? pembibitan.kandang.nama_kandang : '-';
             const selected = emp.pembibitan_id == pembibitan.id ? 'selected' : '';
             pembibitanOptions += `<option value="${pembibitan.id}" ${selected}>${pembibitan.judul} (${lokasiInfo} - ${kandangInfo})</option>`;
         });
+
+        console.log(`✅ Pembibitan dropdown HTML length for ${emp.nama}:`, pembibitanOptions.length);
 
         return `
             <tr data-employee-id="${emp.id}">
