@@ -209,9 +209,9 @@
 @endpush
 
 @section('content')
-<div class="container py-4">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-11">
+<div class="container-fluid px-4 py-4">
+    <div class="row">
+        <div class="col-12">
             <!-- Back Button -->
             <div class="mb-3">
                 <a href="{{ route(auth()->user()->isManager() ? 'manager.absensis.index' : 'admin.absensis.index') }}"
