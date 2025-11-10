@@ -1332,14 +1332,12 @@ class AbsensiController extends Controller
                         'lokasi_kerja' => $employee->lokasi_kerja ?? 'Kantor Pusat',
                         'pembibitan_id' => $employeeData['pembibitan_id'] ?? null,
                         'employee_id' => null,
-                        'kandang_id' => null,
                         'created_at' => $now,
                         'updated_at' => $now,
                     ];
 
                     if ($source === 'employee') {
                         $absensiRecord['employee_id'] = $actualEmployeeId;
-                        $absensiRecord['kandang_id'] = $employee->kandang_id ?? null;
                     }
 
                     $absensiRecords[] = $absensiRecord;
