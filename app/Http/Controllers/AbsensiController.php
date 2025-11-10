@@ -1158,10 +1158,27 @@ class AbsensiController extends Controller
 
             // Batch check existing absensi for today (1 query)
             // Get ALL absensi for these employees on this date
+            $allEmployeeNames = [];
+
+            // Collect all employee names from the maps
+            foreach ($employeesMap as $emp) {
+                $allEmployeeNames[] = $emp->nama;
+            }
+            foreach ($gudangsMap as $gudang) {
+                $allEmployeeNames[] = $gudang->nama;
+            }
+            foreach ($mandorsMap as $mandor) {
+                $allEmployeeNames[] = $mandor->nama;
+            }
+
             $existingAbsensiCollection = Absensi::whereDate('tanggal', $tanggal)
-                ->where(function($q) use ($employeeIds) {
-                    $q->whereIn('employee_id', $employeeIds)
-                      ->orWhereIn('nama_karyawan', array_column($employees, 'nama'));
+                ->where(function($q) use ($employeeIds, $allEmployeeNames) {
+                    if (!empty($employeeIds)) {
+                        $q->whereIn('employee_id', $employeeIds);
+                    }
+                    if (!empty($allEmployeeNames)) {
+                        $q->orWhereIn('nama_karyawan', $allEmployeeNames);
+                    }
                 })
                 ->get();
 
