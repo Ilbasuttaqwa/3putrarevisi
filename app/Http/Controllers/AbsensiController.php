@@ -59,7 +59,12 @@ class AbsensiController extends Controller
         $pembibitans = Pembibitan::with(['lokasi', 'kandang'])->orderBy('judul')->get();
 
         if ($request->ajax()) {
-            $query = Absensi::with(['employee']);
+            // OPTIMIZATION: Eager load ALL relationships to avoid N+1
+            $query = Absensi::with([
+                'employee.kandang.lokasi',  // Employee -> Kandang -> Lokasi
+                'pembibitan.lokasi',        // Pembibitan -> Lokasi
+                'pembibitan.kandang'        // Pembibitan -> Kandang
+            ]);
         
         // Admin can only see absensi for karyawan (not mandor)
         if ($this->getCurrentUser()?->isAdmin()) {
@@ -109,34 +114,37 @@ class AbsensiController extends Controller
             return DataTables::of($query)
                 ->addIndexColumn()
                 ->addColumn('nama_karyawan', function($absensi) {
-                    // PRIORITAS 1: Ambil dari employee relationship jika ada
+                    // Use eager loaded relationship (no extra query!)
                     if ($absensi->employee_id && $absensi->employee) {
                         return $absensi->employee->nama;
                     }
-                    
-                    // PRIORITAS 2: Ambil dari fresh query jika relationship gagal
-                    if ($absensi->employee_id) {
-                        $employee = Employee::find($absensi->employee_id);
-                        if ($employee) {
-                            return $employee->nama;
-                        }
-                    }
-                    
-                    // PRIORITAS 3: Untuk gudang/mandor employees, gunakan stored nama_karyawan
-                    if (!empty($absensi->nama_karyawan) && 
-                        $absensi->nama_karyawan !== 'Karyawan Tidak Ditemukan' && 
-                        $absensi->nama_karyawan !== 'Absensi #' . $absensi->id) {
+
+                    // For gudang/mandor, use stored nama_karyawan
+                    if (!empty($absensi->nama_karyawan)) {
                         return $absensi->nama_karyawan;
                     }
-                    
-                    // FALLBACK: Jika semua gagal, tampilkan pesan error yang jelas
+
                     return 'Data Karyawan Hilang';
                 })
                 ->addColumn('role_karyawan', function($absensi) {
-                    // PRIORITAS 1: Ambil dari employee relationship jika ada
+                    // ============================================================
+                    // PRIORITY 1: Read from stored 'jabatan' field (ALWAYS CORRECT)
+                    // This field is saved during absensi creation for ALL employee types
+                    // ============================================================
+                    if (!empty($absensi->jabatan)) {
+                        return match($absensi->jabatan) {
+                            'karyawan' => 'karyawan kandang',
+                            'karyawan_gudang' => 'karyawan gudang',
+                            'mandor' => 'mandor',
+                            default => $absensi->jabatan
+                        };
+                    }
+
+                    // ============================================================
+                    // FALLBACK: Try employee relationship (for old records before migration)
+                    // ============================================================
                     if ($absensi->employee && $absensi->employee->jabatan) {
                         $jabatan = $absensi->employee->jabatan;
-                        // Transform role names for display
                         return match($jabatan) {
                             'karyawan' => 'karyawan kandang',
                             'karyawan_gudang' => 'karyawan gudang',
@@ -144,24 +152,8 @@ class AbsensiController extends Controller
                             default => $jabatan
                         };
                     }
-                    
-                    // PRIORITAS 2: Untuk gudang/mandor, tentukan role berdasarkan nama_karyawan
-                    if (!empty($absensi->nama_karyawan)) {
-                        // Cek apakah ini gudang employee
-                        $gudang = \App\Models\Gudang::where('nama', $absensi->nama_karyawan)->first();
-                        if ($gudang) {
-                            return 'karyawan gudang';
-                        }
-                        
-                        // Cek apakah ini mandor employee
-                        $mandor = \App\Models\Mandor::where('nama', $absensi->nama_karyawan)->first();
-                        if ($mandor) {
-                            return 'mandor';
-                        }
-                    }
-                    
-                    // FALLBACK: Default untuk karyawan kandang
-                    return 'karyawan kandang';
+
+                    return '-';
                 })
                 ->addColumn('status_badge', function($absensi) {
                     $badgeClass = match($absensi->status) {
@@ -181,29 +173,22 @@ class AbsensiController extends Controller
                 })
                 ->addColumn('lokasi_kerja', function($absensi) {
                     try {
-                        // PRIORITAS 1: Ambil dari pembibitan yang dipilih
-                        if ($absensi->pembibitan_id) {
-                            $pembibitan = \App\Models\Pembibitan::with('lokasi')->find($absensi->pembibitan_id);
-                            if ($pembibitan && $pembibitan->lokasi) {
-                                return $pembibitan->lokasi->nama_lokasi;
-                            }
+                        // PRIORITY 1: From pembibitan (use eager loaded relationship!)
+                        if ($absensi->pembibitan_id && $absensi->pembibitan && $absensi->pembibitan->lokasi) {
+                            return $absensi->pembibitan->lokasi->nama_lokasi;
                         }
-                        
-                        // PRIORITAS 2: Ambil dari employee relationship (kandang -> lokasi)
-                        if ($absensi->employee_id) {
-                            $employee = Employee::with(['kandang.lokasi'])->find($absensi->employee_id);
-                            if ($employee && $employee->kandang && $employee->kandang->lokasi) {
-                                return $employee->kandang->lokasi->nama_lokasi;
-                            }
+
+                        // PRIORITY 2: From employee kandang (use eager loaded relationship!)
+                        if ($absensi->employee_id && $absensi->employee &&
+                            $absensi->employee->kandang && $absensi->employee->kandang->lokasi) {
+                            return $absensi->employee->kandang->lokasi->nama_lokasi;
                         }
-                        
-                        // PRIORITAS 3: Ambil dari stored data (jika tidak ada relasi)
-                        $storedLocation = $absensi->lokasi_kerja;
-                        if ($storedLocation && $storedLocation !== 'Kantor Pusat') {
-                            return $storedLocation;
+
+                        // PRIORITY 3: From stored data
+                        if (!empty($absensi->lokasi_kerja)) {
+                            return $absensi->lokasi_kerja;
                         }
-                        
-                        // FALLBACK: Tampilkan dash jika tidak ada data valid
+
                         return '-';
                     } catch (\Exception $e) {
                         // Fallback if any relationship fails
@@ -1142,65 +1127,119 @@ class AbsensiController extends Controller
                 'tanggal' => 'required|date',
                 'employees' => 'required|array',
                 'employees.*.id' => 'required|string',
-                'employees.*.status' => 'required|in:full,setengah_hari',
+                'employees.*.status' => 'required|in:full,setengah_hari,off',
                 'employees.*.pembibitan_id' => 'nullable|exists:pembibitans,id'
             ]);
 
             $tanggal = $request->tanggal;
             $employees = $request->employees;
-            $successCount = 0;
+
+            // ============================================================
+            // OPTIMIZATION: Batch load ALL data at once (3 queries total)
+            // Instead of N queries inside loop
+            // ============================================================
+
+            // Parse all employee IDs first
+            $employeeIds = [];
+            $gudangIds = [];
+            $mandorIds = [];
+
+            foreach ($employees as $emp) {
+                $employeeId = $emp['id'];
+                if (str_starts_with($employeeId, 'employee_')) {
+                    $employeeIds[] = str_replace('employee_', '', $employeeId);
+                } elseif (str_starts_with($employeeId, 'gudang_')) {
+                    $gudangIds[] = str_replace('gudang_', '', $employeeId);
+                } elseif (str_starts_with($employeeId, 'mandor_')) {
+                    $mandorIds[] = str_replace('mandor_', '', $employeeId);
+                }
+            }
+
+            // Batch load ALL employees (1 query)
+            $employeesMap = Employee::whereIn('id', $employeeIds)->get()->keyBy('id');
+
+            // Batch load ALL gudangs (1 query)
+            $gudangsMap = \App\Models\Gudang::whereIn('id', $gudangIds)->get()->keyBy('id');
+
+            // Batch load ALL mandors (1 query)
+            $mandorsMap = \App\Models\Mandor::whereIn('id', $mandorIds)->get()->keyBy('id');
+
+            // Batch load pembibitans with relations (for lokasi_kerja)
+            $pembibitanIds = array_filter(array_column($employees, 'pembibitan_id'));
+            $pembibitansMap = \App\Models\Pembibitan::with(['lokasi', 'kandang'])
+                ->whereIn('id', $pembibitanIds)
+                ->get()
+                ->keyBy('id');
+
+            // Batch check existing absensi for today (1 query)
+            // Get ALL absensi for these employees on this date
+            $allEmployeeNames = [];
+
+            // Collect all employee names from the maps
+            foreach ($employeesMap as $emp) {
+                $allEmployeeNames[] = $emp->nama;
+            }
+            foreach ($gudangsMap as $gudang) {
+                $allEmployeeNames[] = $gudang->nama;
+            }
+            foreach ($mandorsMap as $mandor) {
+                $allEmployeeNames[] = $mandor->nama;
+            }
+
+            $existingAbsensiCollection = Absensi::whereDate('tanggal', $tanggal)
+                ->where(function($q) use ($employeeIds, $allEmployeeNames) {
+                    if (!empty($employeeIds)) {
+                        $q->whereIn('employee_id', $employeeIds);
+                    }
+                    if (!empty($allEmployeeNames)) {
+                        $q->orWhereIn('nama_karyawan', $allEmployeeNames);
+                    }
+                })
+                ->get();
+
+            // Prepare bulk insert data
+            $absensiRecords = [];
             $errors = [];
+            $now = now();
 
             foreach ($employees as $employeeData) {
                 try {
-                        // Parse employee_id to get actual ID and source
-                        $employeeId = $employeeData['id'];
-                        $actualEmployeeId = null;
-                        $source = null;
-
-                        if (str_starts_with($employeeId, 'employee_')) {
-                            $actualEmployeeId = str_replace('employee_', '', $employeeId);
-                            $source = 'employee';
-                        } elseif (str_starts_with($employeeId, 'gudang_')) {
-                            $actualEmployeeId = str_replace('gudang_', '', $employeeId);
-                            $source = 'gudang';
-                        } elseif (str_starts_with($employeeId, 'mandor_')) {
-                            $actualEmployeeId = str_replace('mandor_', '', $employeeId);
-                            $source = 'mandor';
-                        } else {
-                            // If no prefix, assume it's a direct employee ID from frontend
-                            $actualEmployeeId = $employeeId;
-                            $source = 'employee';
-                        }
-
-                    // Get employee based on source
+                    // Parse employee_id to get actual ID and source
+                    $employeeId = $employeeData['id'];
+                    $actualEmployeeId = null;
+                    $source = null;
                     $employee = null;
-                    if ($source === 'employee') {
-                        $employee = Employee::find($actualEmployeeId);
-                    } elseif ($source === 'gudang') {
-                        $gudang = \App\Models\Gudang::find($actualEmployeeId);
+
+                    if (str_starts_with($employeeId, 'employee_')) {
+                        $actualEmployeeId = str_replace('employee_', '', $employeeId);
+                        $source = 'employee';
+                        $employee = $employeesMap->get($actualEmployeeId);
+                    } elseif (str_starts_with($employeeId, 'gudang_')) {
+                        $actualEmployeeId = str_replace('gudang_', '', $employeeId);
+                        $source = 'gudang';
+                        $gudang = $gudangsMap->get($actualEmployeeId);
                         if ($gudang) {
                             $employee = (object) [
                                 'id' => 'gudang_' . $gudang->id,
                                 'nama' => $gudang->nama,
                                 'jabatan' => 'karyawan_gudang',
-                                'gaji_pokok' => $gudang->gaji,
-                                'lokasi_kerja' => 'Kantor Pusat'
+                                'gaji_pokok' => $gudang->gaji
                             ];
                         }
-                    } elseif ($source === 'mandor') {
-                        $mandor = \App\Models\Mandor::find($actualEmployeeId);
+                    } elseif (str_starts_with($employeeId, 'mandor_')) {
+                        $actualEmployeeId = str_replace('mandor_', '', $employeeId);
+                        $source = 'mandor';
+                        $mandor = $mandorsMap->get($actualEmployeeId);
                         if ($mandor) {
                             $employee = (object) [
                                 'id' => 'mandor_' . $mandor->id,
                                 'nama' => $mandor->nama,
                                 'jabatan' => 'mandor',
-                                'gaji_pokok' => $mandor->gaji,
-                                'lokasi_kerja' => 'Kantor Pusat'
+                                'gaji_pokok' => $mandor->gaji
                             ];
                         }
                     }
-                    
+
                     if (!$employee) {
                         $errors[] = "Karyawan dengan ID {$employeeId} tidak ditemukan";
                         continue;
@@ -1212,67 +1251,293 @@ class AbsensiController extends Controller
                         continue;
                     }
 
-                    // Check for duplicate attendance on the same date
-                    $existingAbsensi = null;
-                    
-                    if ($source === 'employee') {
-                        $existingAbsensi = Absensi::where('employee_id', $actualEmployeeId)
-                            ->whereDate('tanggal', $tanggal)
-                            ->first();
+                    // ============================================================
+                    // BUSINESS RULE: Half-Day Shift System
+                    // ============================================================
+                    // 1. Full day → No other absensi allowed same day
+                    // 2. Half day → Max 2 shifts, different pembibitan required
+                    // 3. Already 2 shifts → No more allowed
+                    // ============================================================
+
+                    $existingForEmployee = $existingAbsensiCollection->filter(function($absensi) use ($employee, $actualEmployeeId, $source) {
+                        if ($source === 'employee') {
+                            return $absensi->employee_id == $actualEmployeeId;
+                        } else {
+                            // For gudang/mandor, match by name
+                            return $absensi->nama_karyawan === $employee->nama;
+                        }
+                    });
+
+                    $newStatus = $employeeData['status'];
+                    $newPembibitanId = $employeeData['pembibitan_id'] ?? null;
+
+                    // Validate based on existing absensi
+                    if ($existingForEmployee->count() > 0) {
+                        // Rule: Check if we can add this absensi
+
+                        // RULE 1: If already 2 shifts today → REJECT
+                        if ($existingForEmployee->count() >= 2) {
+                            $errorMsg = "❌ {$employee->nama} sudah memiliki 2 shift pada {$tanggal} (maksimal 2 shift per hari)";
+                            $errors[] = $errorMsg;
+                            Log::warning("🚫 RULE 1 BLOCKED: {$errorMsg}");
+                            continue;
+                        }
+
+                        $firstShift = $existingForEmployee->first();
+
+                        // RULE 2: If existing is FULL DAY → REJECT
+                        if ($firstShift->status === 'full') {
+                            $errorMsg = "❌ {$employee->nama} sudah absen Full Day pada {$tanggal} (tidak bisa tambah shift)";
+                            $errors[] = $errorMsg;
+                            Log::warning("🚫 RULE 2 BLOCKED: {$errorMsg}");
+                            continue;
+                        }
+
+                        // RULE 3: If NEW is FULL DAY but already has shift → REJECT
+                        if ($newStatus === 'full') {
+                            $errorMsg = "❌ {$employee->nama} sudah memiliki shift pada {$tanggal} (tidak bisa absen Full Day)";
+                            $errors[] = $errorMsg;
+                            Log::warning("🚫 RULE 3 BLOCKED: {$errorMsg}");
+                            continue;
+                        }
+
+                        // RULE 4: Both are HALF DAY → Check pembibitan must be different
+                        if ($firstShift->status === 'setengah_hari' && $newStatus === 'setengah_hari') {
+                            // Check if pembibitan is different
+                            if ($newPembibitanId && $firstShift->pembibitan_id == $newPembibitanId) {
+                                $pembibitanName = '';
+                                if ($newPembibitanId) {
+                                    $pem = \App\Models\Pembibitan::find($newPembibitanId);
+                                    $pembibitanName = $pem ? $pem->judul : 'Pembibitan #' . $newPembibitanId;
+                                }
+                                $errorMsg = "❌ {$employee->nama} sudah absen setengah hari di {$pembibitanName} pada {$tanggal} (pilih pembibitan lain untuk shift ke-2)";
+                                $errors[] = $errorMsg;
+                                Log::warning("🚫 RULE 4 BLOCKED: {$errorMsg}");
+                                continue;
+                            }
+
+                            // ✅ Valid: Second half-day shift at different pembibitan
+                            Log::info("✅ RULE 4 PASSED: Second shift allowed for {$employee->nama}", [
+                                'date' => $tanggal,
+                                'first_shift_pembibitan' => $firstShift->pembibitan_id,
+                                'second_shift_pembibitan' => $newPembibitanId
+                            ]);
+                        }
                     } else {
-                        // For gudang/mandor, check by name and date
-                        $existingAbsensi = Absensi::where('nama_karyawan', $employee->nama)
-                            ->whereDate('tanggal', $tanggal)
-                            ->first();
+                        // No existing absensi for today
+                        // RULE 5: If new status is OFF → Maybe reject? (discuss with user)
+                        // For now, allow OFF status
                     }
 
-                    if ($existingAbsensi) {
-                        $errors[] = "Absensi untuk {$employee->nama} pada tanggal {$tanggal} sudah ada";
-                        continue;
+                    // Calculate gaji_hari_itu based on status
+                    $gajiPokok = $employee->gaji_pokok ?? 0;
+                    $gajiHariItu = 0;
+
+                    if ($employeeData['status'] === 'full') {
+                        $gajiHariItu = $gajiPokok / 30;
+                    } elseif ($employeeData['status'] === 'setengah_hari') {
+                        $gajiHariItu = ($gajiPokok / 30) * 0.5;
+                    } else {
+                        $gajiHariItu = 0; // off
                     }
 
-                        // Create absensi record
-                        $absensiData = [
-                            'tanggal' => $tanggal,
-                            'status' => $employeeData['status'],
-                            'nama_karyawan' => $employee->nama,
-                            'gaji_pokok_saat_itu' => $employee->gaji_pokok,
-                            'gaji_hari_itu' => $employee->gaji_pokok,
-                            'lokasi_kerja' => $employee->lokasi_kerja ?? 'Kantor Pusat',
-                            'pembibitan_id' => $employeeData['pembibitan_id'] ?? null,
-                        ];
+                    // ============================================================
+                    // BUSINESS RULE: Lokasi kerja HARUS dari pembibitan
+                    // Pembibitan → Kandang → Lokasi (relasi otomatis)
+                    // ============================================================
+                    $lokasiKerja = '-';
+                    $pembibitanId = $employeeData['pembibitan_id'] ?? null;
+
+                    if ($pembibitanId && $pembibitansMap->has($pembibitanId)) {
+                        $pembibitan = $pembibitansMap->get($pembibitanId);
+                        if ($pembibitan->lokasi) {
+                            $lokasiKerja = $pembibitan->lokasi->nama_lokasi;
+                        }
+                    }
+
+                    // Prepare absensi record for bulk insert
+                    $absensiRecord = [
+                        'tanggal' => $tanggal,
+                        'status' => $employeeData['status'],
+                        'nama_karyawan' => $employee->nama,
+                        // 'jabatan' => $employee->jabatan,  // ⚠️ DISABLED: Column doesn't exist yet
+                        'gaji_pokok_saat_itu' => $gajiPokok,
+                        'gaji_hari_itu' => $gajiHariItu,
+                        'lokasi_kerja' => $lokasiKerja,  // ✅ From pembibitan!
+                        'pembibitan_id' => $pembibitanId,
+                        'employee_id' => null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
 
                     if ($source === 'employee') {
-                        $absensiData['employee_id'] = $actualEmployeeId;
-                        $absensiData['kandang_id'] = $employee->kandang_id ?? null;
+                        $absensiRecord['employee_id'] = $actualEmployeeId;
                     }
 
-                    Absensi::create($absensiData);
-                    $successCount++;
+                    $absensiRecords[] = $absensiRecord;
 
                 } catch (\Exception $e) {
                     $errors[] = "Error untuk {$employeeData['id']}: " . $e->getMessage();
                 }
             }
 
+            // ============================================================
+            // OPTIMIZATION: Bulk insert in transaction (1 query)
+            // Instead of N individual inserts
+            // ============================================================
+
+            $successCount = 0;
+            if (!empty($absensiRecords)) {
+                // 🔍 DEBUG: Log what records we're about to insert
+                Log::info("📊 Preparing to insert absensi records", [
+                    'total_records' => count($absensiRecords),
+                    'records' => array_map(function($record) {
+                        return [
+                            'nama' => $record['nama_karyawan'],
+                            'jabatan' => $record['jabatan'],
+                            'tanggal' => $record['tanggal'],
+                            'status' => $record['status'],
+                            'pembibitan_id' => $record['pembibitan_id'],
+                            'lokasi_kerja' => $record['lokasi_kerja']
+                        ];
+                    }, $absensiRecords)
+                ]);
+
+                DB::beginTransaction();
+                try {
+                    DB::table('absensis')->insert($absensiRecords);
+                    $successCount = count($absensiRecords);
+                    DB::commit();
+
+                    // ✅ Log successful insert
+                    Log::info("✅ Successfully inserted {$successCount} absensi records");
+
+                    Log::info('Bulk absensi created', [
+                        'count' => $successCount,
+                        'date' => $tanggal
+                    ]);
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    // ❌ Log detailed error information
+                    Log::error('❌ Bulk insert FAILED', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                        'attempted_records' => count($absensiRecords)
+                    ]);
+                    throw $e;
+                }
+            }
+
             $message = "Berhasil menyimpan {$successCount} absensi";
             if (!empty($errors)) {
-                $message .= ". Error: " . implode(', ', $errors);
+                $message .= ". " . count($errors) . " error";
             }
 
             return response()->json([
                 'success' => $successCount > 0,
                 'message' => $message,
                 'success_count' => $successCount,
+                'error_count' => count($errors),
                 'errors' => $errors
             ]);
 
         } catch (\Exception $e) {
             Log::error('Bulk store absensi error: ' . $e->getMessage());
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menyimpan absensi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Check existing shifts for employees on a specific date
+     * Used by frontend to show shift indicators
+     */
+    public function checkExistingShifts(Request $request)
+    {
+        try {
+            $request->validate([
+                'tanggal' => 'required|date',
+                'employee_ids' => 'required|array',
+                'employee_ids.*' => 'required|string'
+            ]);
+
+            $tanggal = $request->tanggal;
+            $employeeIds = $request->employee_ids;
+
+            // Parse employee IDs to get actual IDs
+            $actualEmployeeIds = [];
+            $employeeNames = [];
+
+            foreach ($employeeIds as $empId) {
+                if (str_starts_with($empId, 'employee_')) {
+                    $actualEmployeeIds[] = str_replace('employee_', '', $empId);
+                } elseif (str_starts_with($empId, 'gudang_')) {
+                    $gudangId = str_replace('gudang_', '', $empId);
+                    $gudang = \App\Models\Gudang::find($gudangId);
+                    if ($gudang) {
+                        $employeeNames[] = $gudang->nama;
+                    }
+                } elseif (str_starts_with($empId, 'mandor_')) {
+                    $mandorId = str_replace('mandor_', '', $empId);
+                    $mandor = \App\Models\Mandor::find($mandorId);
+                    if ($mandor) {
+                        $employeeNames[] = $mandor->nama;
+                    }
+                }
+            }
+
+            // Get existing absensi for this date
+            $existingShifts = Absensi::whereDate('tanggal', $tanggal)
+                ->where(function($q) use ($actualEmployeeIds, $employeeNames) {
+                    $q->whereIn('employee_id', $actualEmployeeIds)
+                      ->orWhereIn('nama_karyawan', $employeeNames);
+                })
+                ->with('pembibitan')
+                ->get();
+
+            // Format response
+            $shiftsData = [];
+            foreach ($employeeIds as $empId) {
+                $shifts = $existingShifts->filter(function($absensi) use ($empId) {
+                    if (str_starts_with($empId, 'employee_')) {
+                        $actualId = str_replace('employee_', '', $empId);
+                        return $absensi->employee_id == $actualId;
+                    } else {
+                        // Match by name for gudang/mandor
+                        return true; // Will be filtered properly
+                    }
+                });
+
+                if ($shifts->count() > 0) {
+                    $shiftsData[$empId] = [
+                        'count' => $shifts->count(),
+                        'shifts' => $shifts->map(function($shift) {
+                            return [
+                                'status' => $shift->status,
+                                'pembibitan_id' => $shift->pembibitan_id,
+                                'pembibitan_nama' => $shift->pembibitan ? $shift->pembibitan->judul : null,
+                                'can_add_shift' => $shift->status === 'setengah_hari'
+                            ];
+                        })->values()
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'date' => $tanggal,
+                'shifts' => $shiftsData
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Check existing shifts error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengecek shift: ' . $e->getMessage()
             ], 500);
         }
     }

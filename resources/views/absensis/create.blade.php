@@ -401,6 +401,11 @@ $(document).ready(function() {
     let allPembibitans = @json($pembibitans ?? []);
 
     console.log('📋 Pembibitans loaded:', allPembibitans.length);
+    console.log('📋 Pembibitans data:', allPembibitans);
+
+    if (allPembibitans.length === 0) {
+        console.warn('⚠️ WARNING: No pembibitans data found!');
+    }
 
     // Initialize Flatpickr
     flatpickr("#tanggalAbsensi", {
@@ -591,12 +596,16 @@ $(document).ready(function() {
 
         // Generate pembibitan options
         let pembibitanOptions = '<option value="">Pilih Pembibitan (Opsional)</option>';
+        console.log(`🔧 Creating row for ${emp.nama}, available pembibitans:`, allPembibitans.length);
+
         allPembibitans.forEach(pembibitan => {
             const lokasiInfo = pembibitan.lokasi ? pembibitan.lokasi.nama_lokasi : '-';
             const kandangInfo = pembibitan.kandang ? pembibitan.kandang.nama_kandang : '-';
             const selected = emp.pembibitan_id == pembibitan.id ? 'selected' : '';
             pembibitanOptions += `<option value="${pembibitan.id}" ${selected}>${pembibitan.judul} (${lokasiInfo} - ${kandangInfo})</option>`;
         });
+
+        console.log(`✅ Pembibitan dropdown HTML length for ${emp.nama}:`, pembibitanOptions.length);
 
         return `
             <tr data-employee-id="${emp.id}">
@@ -778,18 +787,52 @@ $(document).ready(function() {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function(response) {
-                if (response.success) {
+                console.log('✅ Server response:', response);
+
+                if (response.success && response.success_count > 0) {
+                    // Success: At least 1 record saved
                     Swal.fire({
                         icon: 'success',
                         title: 'Berhasil!',
-                        text: response.message || `Berhasil menyimpan ${formData.employees.length} absensi karyawan`,
+                        text: response.message || `Berhasil menyimpan ${response.success_count} absensi karyawan`,
                         confirmButtonColor: '#16a34a',
-                        timer: 2000
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        window.location.href = '{{ route(auth()->user()->isManager() ? "manager.absensis.index" : "admin.absensis.index") }}';
+                    });
+                } else if (response.success_count > 0 && response.error_count > 0) {
+                    // Partial success: Some saved, some errors
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Sebagian Berhasil',
+                        html: `
+                            <p><strong>Berhasil:</strong> ${response.success_count} absensi</p>
+                            <p><strong>Gagal:</strong> ${response.error_count} absensi</p>
+                            <hr>
+                            <small>${response.errors ? response.errors.join('<br>') : ''}</small>
+                        `,
+                        confirmButtonColor: '#16a34a',
+                        confirmButtonText: 'OK'
                     }).then(() => {
                         window.location.href = '{{ route(auth()->user()->isManager() ? "manager.absensis.index" : "admin.absensis.index") }}';
                     });
                 } else {
-                    throw new Error(response.message || 'Gagal menyimpan data');
+                    // All failed
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal!',
+                        html: `
+                            <p>${response.message || 'Gagal menyimpan data absensi'}</p>
+                            ${response.errors && response.errors.length > 0 ?
+                                '<hr><small style="color: #dc2626;">' + response.errors.join('<br>') + '</small>' :
+                                ''
+                            }
+                        `,
+                        confirmButtonColor: '#dc2626',
+                        confirmButtonText: 'OK'
+                    });
+                    submitBtn.prop('disabled', false).html(originalText);
                 }
             },
             error: function(xhr) {
