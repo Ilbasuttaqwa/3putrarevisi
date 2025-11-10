@@ -81,11 +81,6 @@ class SalaryReportController extends Controller
         }
             
         $reports = $query->orderBy('nama_karyawan')->get();
-        
-        // Admin can only see salary reports for karyawan (not mandor)
-        if ($this->getCurrentUser()?->isAdmin()) {
-            $reports = $reports->where('tipe_karyawan', 'karyawan');
-        }
 
         // Get filter options - hanya yang memiliki data laporan gaji
         $lokasis = Lokasi::whereIn('id', function($query) use ($tahun, $bulan) {
@@ -156,9 +151,9 @@ class SalaryReportController extends Controller
             ->pembibitan($pembibitanId)
             ->tanggalRange($tanggalMulai, $tanggalSelesai);
 
-        // Admin can only see salary reports for karyawan (not mandor)
+        // Admin tidak boleh melihat mandor
         if ($this->getCurrentUser()?->isAdmin()) {
-            $query->where('tipe_karyawan', 'karyawan');
+            $query->where('tipe_karyawan', '!=', 'mandor');
         }
 
         $reports = $query->orderBy('nama_karyawan')->get();
