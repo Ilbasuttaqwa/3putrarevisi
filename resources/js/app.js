@@ -1,7 +1,7 @@
 // Modern Management System - Production Ready
 
-// Import absensi bulk functionality
-import absensiBulk from './absensi-bulk.js';
+// NOTE: absensi-bulk.js DISABLED - Using new Select2 form instead
+// import absensiBulk from './absensi-bulk.js';
 
 // Modern JavaScript enhancements
 document.addEventListener('DOMContentLoaded', function() {
@@ -116,6 +116,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Real-time functionality integrated
     console.log('✅ Real-time functionality ready');
 
+    /* ===================================================================
+     * ABSENSI BULK MODAL - DISABLED (Using new Select2 form)
+     * Old modal-based bulk attendance system replaced with:
+     * - Modern Select2 dropdown with search
+     * - Flatpickr date picker
+     * - Individual employee selection
+     * Located at: /absensis/create
+     * =================================================================== */
+    /*
     // Absensi Bulk Management
     window.absensiBulk = new (class AbsensiBulkManager {
         constructor() {
@@ -372,7 +381,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.toggleSelectAll = () => absensiBulk.toggleSelectAll();
     window.submitBulkAttendance = () => absensiBulk.submitBulkAttendance();
     window.quickAbsenBulk = (employeeId) => absensiBulk.quickAbsenBulk(employeeId);
+    */
+    // End of disabled bulk modal code
 
     console.log('✅ Modern utilities initialized');
-    console.log('✅ Absensi bulk functions exposed to global scope');
+    // console.log('✅ Absensi bulk functions exposed to global scope'); // DISABLED
 });

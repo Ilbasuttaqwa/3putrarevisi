@@ -528,28 +528,12 @@ $(document).ready(function() {
             console.error('Error updating absensi lokasi:', error);
         });
     }
-    
-    // Function to refresh bulk attendance data
-    function refreshBulkAttendanceData() {
-        // Only refresh if bulk modal is open
-        const bulkModal = document.getElementById('bulkAttendanceModal');
-        if (bulkModal && bulkModal.classList.contains('show')) {
-            fetch('{{ route(auth()->user()->isManager() ? "manager.absensis.refresh-master-data" : "admin.absensis.refresh-master-data") }}')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Update employee list in bulk modal
-                        updateBulkEmployeeList(data.data.employees);
-                        console.log('✅ Bulk attendance data refreshed');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error refreshing bulk attendance data:', error);
-                });
-        }
-    }
 
-    // updateBulkEmployeeList function moved to app.js
+    /* OLD BULK MODAL FUNCTIONS - DISABLED
+    function refreshBulkAttendanceData() {
+        // Function removed - using new Select2 form instead
+    }
+    */
 });
 
 // Toggle select all checkboxes in main table
