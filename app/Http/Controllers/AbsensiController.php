@@ -1360,10 +1360,10 @@ class AbsensiController extends Controller
                         'tanggal' => $tanggal,
                         'status' => $employeeData['status'],
                         'nama_karyawan' => $employee->nama,
-                        'jabatan' => $employee->jabatan,  // ✅ CRITICAL: Save role!
+                        // 'jabatan' => $employee->jabatan,  // ⚠️ DISABLED: Column doesn't exist yet
                         'gaji_pokok_saat_itu' => $gajiPokok,
                         'gaji_hari_itu' => $gajiHariItu,
-                        'lokasi_kerja' => $lokasiKerja,  // ✅ CRITICAL: From pembibitan!
+                        'lokasi_kerja' => $lokasiKerja,  // ✅ From pembibitan!
                         'pembibitan_id' => $pembibitanId,
                         'employee_id' => null,
                         'created_at' => $now,
