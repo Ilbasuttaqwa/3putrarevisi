@@ -82,6 +82,14 @@
         color: white;
     }
 
+    /* Pastikan semua elemen di header table juga putih */
+    .employee-table thead th,
+    .employee-table thead th *,
+    .employee-table thead th a,
+    .employee-table thead th span {
+        color: #ffffff !important;
+    }
+
     .employee-table th {
         font-weight: 600;
         text-transform: uppercase;
@@ -209,9 +217,9 @@
 @endpush
 
 @section('content')
-<div class="container py-4">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-11">
+<div class="container-fluid px-4 py-4">
+    <div class="row">
+        <div class="col-12">
             <!-- Back Button -->
             <div class="mb-3">
                 <a href="{{ route(auth()->user()->isManager() ? 'manager.absensis.index' : 'admin.absensis.index') }}"

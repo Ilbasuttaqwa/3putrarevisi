@@ -63,7 +63,8 @@
                             <label for="tipe" class="form-label">Tipe Karyawan</label>
                             <select name="tipe" id="tipe" class="form-select">
                                 <option value="all" {{ $tipe == 'all' ? 'selected' : '' }}>Semua</option>
-                                <option value="gudang" {{ $tipe == 'gudang' ? 'selected' : '' }}>Gudang</option>
+                                <option value="karyawan" {{ $tipe == 'karyawan' ? 'selected' : '' }}>Karyawan Kandang</option>
+                                <option value="gudang" {{ $tipe == 'gudang' ? 'selected' : '' }}>Karyawan Gudang</option>
                                 @if(auth()->user()->isManager())
                                     <option value="mandor" {{ $tipe == 'mandor' ? 'selected' : '' }}>Mandor</option>
                                 @endif
@@ -342,33 +343,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Reset filters function
 function resetFilters() {
-    // Reset all form fields to empty values
-    document.getElementById('tahun').value = '';
-    document.getElementById('bulan').value = '';
-    document.getElementById('tipe').value = '';
-    document.getElementById('lokasi_id').value = '';
-    document.getElementById('kandang_id').value = '';
-    document.getElementById('pembibitan_id').value = '';
-    document.getElementById('tanggal_mulai').value = '';
-    document.getElementById('tanggal_selesai').value = '';
-    
-    // Clear the table content
-    const tableBody = document.querySelector('table tbody');
-    if (tableBody) {
-        tableBody.innerHTML = '<tr><td colspan="11" class="text-center text-muted">Tidak ada data yang ditemukan</td></tr>';
-    }
-    
-    // Clear totals
-    const totalsRow = document.querySelector('table tfoot tr');
-    if (totalsRow) {
-        totalsRow.innerHTML = '<td colspan="11" class="text-center text-muted">-</td>';
-    }
-    
-    // Hide export buttons
-    const exportButtons = document.querySelectorAll('.export-buttons a');
-    exportButtons.forEach(btn => {
-        btn.style.display = 'none';
-    });
+    // Redirect to index page without any query parameters to reset all filters
+    window.location.href = '{{ route(auth()->user()->isAdmin() ? "admin.salary-reports.index" : "manager.salary-reports.index") }}';
 }
 </script>
 @endpush

@@ -59,6 +59,25 @@
     z-index: 10;
 }
 
+/* Pastikan semua elemen di dalam header th juga putih */
+#absensiTable thead th,
+#absensiTable thead th *,
+#absensiTable thead th a,
+#absensiTable thead th span {
+    color: #ffffff !important;
+}
+
+/* Override DataTables sorting arrows color */
+#absensiTable thead th.sorting:before,
+#absensiTable thead th.sorting:after,
+#absensiTable thead th.sorting_asc:before,
+#absensiTable thead th.sorting_asc:after,
+#absensiTable thead th.sorting_desc:before,
+#absensiTable thead th.sorting_desc:after {
+    color: #ffffff !important;
+    opacity: 0.5;
+}
+
 #absensiTable tbody td {
     border: 1px solid #ddd;
     padding: 8px;

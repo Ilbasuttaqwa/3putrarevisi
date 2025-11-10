@@ -141,7 +141,7 @@ class AbsensiController extends Controller
                     }
 
                     // ============================================================
-                    // FALLBACK: Try employee relationship (for old records before migration)
+                    // PRIORITY 2: Try employee relationship (for old records with employee_id)
                     // ============================================================
                     if ($absensi->employee && $absensi->employee->jabatan) {
                         $jabatan = $absensi->employee->jabatan;
@@ -151,6 +151,27 @@ class AbsensiController extends Controller
                             'mandor' => 'mandor',
                             default => $jabatan
                         };
+                    }
+
+                    // ============================================================
+                    // PRIORITY 3: INFER from nama_karyawan (for old records without jabatan)
+                    // Check if name exists in Gudang or Mandor table
+                    // ============================================================
+                    if (!empty($absensi->nama_karyawan)) {
+                        // Check if this is a gudang employee
+                        $gudang = \App\Models\Gudang::where('nama', $absensi->nama_karyawan)->first();
+                        if ($gudang) {
+                            return 'karyawan gudang';
+                        }
+
+                        // Check if this is a mandor
+                        $mandor = \App\Models\Mandor::where('nama', $absensi->nama_karyawan)->first();
+                        if ($mandor) {
+                            return 'mandor';
+                        }
+
+                        // If not in gudang or mandor, must be regular employee
+                        return 'karyawan kandang';
                     }
 
                     return '-';
