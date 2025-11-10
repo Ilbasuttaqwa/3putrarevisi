@@ -1156,11 +1156,14 @@ class AbsensiController extends Controller
             // Batch load ALL mandors (1 query)
             $mandorsMap = \App\Models\Mandor::whereIn('id', $mandorIds)->get()->keyBy('id');
 
-            // Batch check duplicates (1 query)
-            $existingAbsensi = Absensi::whereDate('tanggal', $tanggal)
-                ->whereIn('employee_id', $employeeIds)
-                ->get()
-                ->keyBy('employee_id');
+            // Batch check existing absensi for today (1 query)
+            // Get ALL absensi for these employees on this date
+            $existingAbsensiCollection = Absensi::whereDate('tanggal', $tanggal)
+                ->where(function($q) use ($employeeIds) {
+                    $q->whereIn('employee_id', $employeeIds)
+                      ->orWhereIn('nama_karyawan', array_column($employees, 'nama'));
+                })
+                ->get();
 
             // Prepare bulk insert data
             $absensiRecords = [];
@@ -1220,10 +1223,74 @@ class AbsensiController extends Controller
                         continue;
                     }
 
-                    // Check for duplicate (using pre-loaded data)
-                    if ($source === 'employee' && $existingAbsensi->has($actualEmployeeId)) {
-                        $errors[] = "Absensi untuk {$employee->nama} pada tanggal {$tanggal} sudah ada";
-                        continue;
+                    // ============================================================
+                    // BUSINESS RULE: Half-Day Shift System
+                    // ============================================================
+                    // 1. Full day → No other absensi allowed same day
+                    // 2. Half day → Max 2 shifts, different pembibitan required
+                    // 3. Already 2 shifts → No more allowed
+                    // ============================================================
+
+                    $existingForEmployee = $existingAbsensiCollection->filter(function($absensi) use ($employee, $actualEmployeeId, $source) {
+                        if ($source === 'employee') {
+                            return $absensi->employee_id == $actualEmployeeId;
+                        } else {
+                            // For gudang/mandor, match by name
+                            return $absensi->nama_karyawan === $employee->nama;
+                        }
+                    });
+
+                    $newStatus = $employeeData['status'];
+                    $newPembibitanId = $employeeData['pembibitan_id'] ?? null;
+
+                    // Validate based on existing absensi
+                    if ($existingForEmployee->count() > 0) {
+                        // Rule: Check if we can add this absensi
+
+                        // RULE 1: If already 2 shifts today → REJECT
+                        if ($existingForEmployee->count() >= 2) {
+                            $errors[] = "❌ {$employee->nama} sudah memiliki 2 shift pada {$tanggal} (maksimal 2 shift per hari)";
+                            continue;
+                        }
+
+                        $firstShift = $existingForEmployee->first();
+
+                        // RULE 2: If existing is FULL DAY → REJECT
+                        if ($firstShift->status === 'full') {
+                            $errors[] = "❌ {$employee->nama} sudah absen Full Day pada {$tanggal} (tidak bisa tambah shift)";
+                            continue;
+                        }
+
+                        // RULE 3: If NEW is FULL DAY but already has shift → REJECT
+                        if ($newStatus === 'full') {
+                            $errors[] = "❌ {$employee->nama} sudah memiliki shift pada {$tanggal} (tidak bisa absen Full Day)";
+                            continue;
+                        }
+
+                        // RULE 4: Both are HALF DAY → Check pembibitan must be different
+                        if ($firstShift->status === 'setengah_hari' && $newStatus === 'setengah_hari') {
+                            // Check if pembibitan is different
+                            if ($newPembibitanId && $firstShift->pembibitan_id == $newPembibitanId) {
+                                $pembibitanName = '';
+                                if ($newPembibitanId) {
+                                    $pem = \App\Models\Pembibitan::find($newPembibitanId);
+                                    $pembibitanName = $pem ? $pem->judul : 'Pembibitan #' . $newPembibitanId;
+                                }
+                                $errors[] = "❌ {$employee->nama} sudah absen setengah hari di {$pembibitanName} pada {$tanggal} (pilih pembibitan lain untuk shift ke-2)";
+                                continue;
+                            }
+
+                            // ✅ Valid: Second half-day shift at different pembibitan
+                            Log::info("✅ Second shift allowed for {$employee->nama}", [
+                                'date' => $tanggal,
+                                'first_shift_pembibitan' => $firstShift->pembibitan_id,
+                                'second_shift_pembibitan' => $newPembibitanId
+                            ]);
+                        }
+                    } else {
+                        // No existing absensi for today
+                        // RULE 5: If new status is OFF → Maybe reject? (discuss with user)
+                        // For now, allow OFF status
                     }
 
                     // Calculate gaji_hari_itu based on status
@@ -1308,6 +1375,97 @@ class AbsensiController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menyimpan absensi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Check existing shifts for employees on a specific date
+     * Used by frontend to show shift indicators
+     */
+    public function checkExistingShifts(Request $request)
+    {
+        try {
+            $request->validate([
+                'tanggal' => 'required|date',
+                'employee_ids' => 'required|array',
+                'employee_ids.*' => 'required|string'
+            ]);
+
+            $tanggal = $request->tanggal;
+            $employeeIds = $request->employee_ids;
+
+            // Parse employee IDs to get actual IDs
+            $actualEmployeeIds = [];
+            $employeeNames = [];
+
+            foreach ($employeeIds as $empId) {
+                if (str_starts_with($empId, 'employee_')) {
+                    $actualEmployeeIds[] = str_replace('employee_', '', $empId);
+                } elseif (str_starts_with($empId, 'gudang_')) {
+                    $gudangId = str_replace('gudang_', '', $empId);
+                    $gudang = \App\Models\Gudang::find($gudangId);
+                    if ($gudang) {
+                        $employeeNames[] = $gudang->nama;
+                    }
+                } elseif (str_starts_with($empId, 'mandor_')) {
+                    $mandorId = str_replace('mandor_', '', $empId);
+                    $mandor = \App\Models\Mandor::find($mandorId);
+                    if ($mandor) {
+                        $employeeNames[] = $mandor->nama;
+                    }
+                }
+            }
+
+            // Get existing absensi for this date
+            $existingShifts = Absensi::whereDate('tanggal', $tanggal)
+                ->where(function($q) use ($actualEmployeeIds, $employeeNames) {
+                    $q->whereIn('employee_id', $actualEmployeeIds)
+                      ->orWhereIn('nama_karyawan', $employeeNames);
+                })
+                ->with('pembibitan')
+                ->get();
+
+            // Format response
+            $shiftsData = [];
+            foreach ($employeeIds as $empId) {
+                $shifts = $existingShifts->filter(function($absensi) use ($empId) {
+                    if (str_starts_with($empId, 'employee_')) {
+                        $actualId = str_replace('employee_', '', $empId);
+                        return $absensi->employee_id == $actualId;
+                    } else {
+                        // Match by name for gudang/mandor
+                        return true; // Will be filtered properly
+                    }
+                });
+
+                if ($shifts->count() > 0) {
+                    $shiftsData[$empId] = [
+                        'count' => $shifts->count(),
+                        'shifts' => $shifts->map(function($shift) {
+                            return [
+                                'status' => $shift->status,
+                                'pembibitan_id' => $shift->pembibitan_id,
+                                'pembibitan_nama' => $shift->pembibitan ? $shift->pembibitan->judul : null,
+                                'can_add_shift' => $shift->status === 'setengah_hari'
+                            ];
+                        })->values()
+                    ];
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'date' => $tanggal,
+                'shifts' => $shiftsData
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Check existing shifts error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengecek shift: ' . $e->getMessage()
             ], 500);
         }
     }
